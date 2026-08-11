@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Placeholder headshot">
+  <g fill="none" stroke="#3CDBC0" stroke-width="4" stroke-linecap="round" stroke-dasharray="0.1 12" opacity="0.75">
+    <circle cx="200" cy="140" r="72"/>
+    <path d="M64 372 C64 276 136 240 200 240 C264 240 336 276 336 372"/>
+  </g>
+  <g fill="#3CDBC0" opacity="0.18">
+    <circle cx="200" cy="140" r="58"/>
+    <path d="M84 372 C84 288 144 258 200 258 C256 258 316 288 316 372 Z"/>
+  </g>
+</svg>
