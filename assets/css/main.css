@@ -229,13 +229,20 @@ ul { margin: 0 0 1em; padding-left: 1.2em; }
   border-radius: var(--radius);
   padding: clamp(22px, 3vw, 32px);
 }
-.card .eyebrow { font-size: 0.72rem; margin-bottom: 1.1em; }
+.card .eyebrow {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  line-height: 1.6;
+  margin-bottom: 1em;
+}
 .card h3 {
   font-family: var(--font-body);
   font-style: italic;
   font-weight: 600;
   font-size: 1.08rem;
-  margin-bottom: 0.55em;
+  line-height: 1.35;
+  text-wrap: balance;
+  margin-bottom: 0.6em;
 }
 .card p { font-size: 0.94rem; color: var(--text-body); }
 
