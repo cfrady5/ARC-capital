@@ -87,6 +87,8 @@ textarea:focus-visible {
 ul { margin: 0 0 1em; padding-left: 1.2em; }
 
 .accent { color: var(--mint); }
+/* In split headlines the mint clause always starts its own line */
+h1 .accent, h2 .accent, .statement .accent { display: block; }
 
 /* Skip link */
 .skip-link {
@@ -404,6 +406,11 @@ ul { margin: 0 0 1em; padding-left: 1.2em; }
   font-size: clamp(1.02rem, 1.6vw, 1.15rem);
   margin-top: 1.2em;
 }
+.hero .device .hero-logo {
+  width: min(216px, 38%);
+  height: auto;
+  margin-bottom: clamp(24px, 3.5vw, 40px);
+}
 .hero .device h1 { max-width: 14ch; margin-bottom: 0.8em; }
 .hero .device .values-strip { margin: 0; }
 .values-strip {
@@ -611,6 +618,90 @@ ul { margin: 0 0 1em; padding-left: 1.2em; }
 }
 @media (max-width: 900px) {
   .domains { grid-template-columns: 1fr; gap: 40px; }
+}
+
+/* ---------- Stats band ---------- */
+.stat .stat-n {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--mint);
+  margin-bottom: 0.35em;
+}
+.stat p { font-size: 0.9rem; }
+.sources {
+  margin-top: clamp(20px, 3vw, 32px);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-width: 860px;
+}
+
+/* ---------- Phase cards ---------- */
+.phase-meta {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: -0.4em 0 1.2em;
+}
+.card ul.ticks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.card ul.ticks li {
+  position: relative;
+  padding: 8px 0 8px 22px;
+  font-size: 0.92rem;
+  border-top: 1px solid var(--hairline);
+}
+.card ul.ticks li:first-child { border-top: none; }
+.card ul.ticks li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 15px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mint);
+}
+
+/* ---------- Convergence focus grid ---------- */
+.focus-list--grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0 clamp(20px, 3vw, 40px);
+}
+@media (max-width: 900px) {
+  .focus-list--grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- Closing quote ---------- */
+.closing blockquote { margin: 0; }
+.closing .attribution {
+  margin-top: 1.4em;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.74rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.closing .attribution .name { color: var(--mint); }
+
+/* ---------- Footer disclaimer ---------- */
+.footer-disclaimer {
+  margin-top: clamp(28px, 4vw, 44px);
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-width: 860px;
 }
 
 /* ---------- Misc ---------- */

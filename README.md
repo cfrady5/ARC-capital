@@ -1,9 +1,12 @@
 # PGC — Proving Ground Capital website
 
 Hand-built static marketing site for Proving Ground Capital (formerly "ARC / Applied
-Research Capital", originally on Wix). Includes the August 2026 content updates (About
-story on the homepage with the ARI → PGC bridge, advisory services, standalone Investment
-Thesis page) and the PGC brand system from `PGC Brand Guidelines v1.0`: Funnel Display /
+Research Capital", originally on Wix). Content follows the PGC Capital Markets Brief
+(July 2026): ARI → PGC bridge, two-phase operating model (advisory now, SPVs gated on
+Board ratification), market-scale stats, advisory services, standalone Investment Thesis,
+and updated team. Indicative SPV economics, service pricing, and internal governance
+details are deliberately omitted from the public site; disclaimers are included instead.
+Design follows the PGC brand system from `PGC Brand Guidelines v1.0`: Funnel Display /
 Funnel Sans typography, mint (#3CDBC0) + dark (#072B31) palette with neutral greys,
 holding-device cards with corner cutouts, halftone diagram textures, and the approved
 microcopy set (`// PROVING GROUND CAPITAL //`, `>> DATA LOADED`, `< HQ / … >`, `(↗)`).
