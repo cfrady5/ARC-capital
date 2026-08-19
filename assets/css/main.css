@@ -615,6 +615,12 @@ ul { margin: 0 0 1em; padding-left: 1.2em; }
   margin-bottom: 20px;
   border-bottom: 1px solid var(--hairline);
 }
+.team-card .headshot--photo {
+  object-fit: cover;
+  object-position: center top;
+  border-bottom: none;
+  border-radius: calc(var(--radius-card) - 8px);
+}
 .team-card h3.name {
   font-family: var(--font-display);
   font-weight: 500;

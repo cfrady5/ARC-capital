@@ -47,8 +47,9 @@ is a required radio group (the old Wix site used two independent checkboxes).
    The form captures `audience` and `intent` fields so LP vs. Founder messages can be routed
    to different recipients. A honeypot field (`company_website`) is included; consider adding
    a captcha as well. Confirm the real destination inbox with the team.
-3. **Team headshots.** `assets/img/avatar-placeholder.svg` is used for all three bios.
-   Replace with background-removed WebP/AVIF cutouts and update the `alt` text.
+3. **Team headshots.** Jeron Peoples and John Holtkamp have real photos
+   (`assets/img/team-*.webp`, 800×800). Stu Dillon still uses
+   `assets/img/avatar-placeholder.svg` — swap in a photo when available.
 4. **Open Graph image.** No `og:image` yet — export a 1200×630 card from the wordmark
    and add the tag to each page's `<head>`.
 5. **Sitemap.** Add `sitemap.xml` and the `Sitemap:` line in `robots.txt` once the
