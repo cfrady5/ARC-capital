@@ -291,6 +291,13 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
       right calc(var(--cut-w) - var(--cut-r)) bottom calc(var(--cut-h) - var(--cut-r))
       / calc(var(--cut-r) + 1px) var(--cut-r) no-repeat;
 }
+/* No room for the corner cutout next to content on small screens */
+@media (max-width: 760px) {
+  .device--cutout {
+    -webkit-mask: none;
+    mask: none;
+  }
+}
 
 /* Dark card variant used inside light contexts */
 .card--values {
@@ -422,6 +429,9 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: rgba(7, 43, 49, 0.75);
+}
+@media (max-width: 480px) {
+  .values-strip { font-size: 0.62rem; letter-spacing: 0.18em; }
 }
 .hero-below {
   display: flex;
