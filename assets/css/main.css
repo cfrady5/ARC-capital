@@ -230,36 +230,62 @@ ul { margin: 0 0 1em; padding-left: 1.2em; }
 .device .eyebrow { color: rgba(7, 43, 49, 0.72); }
 .device h1, .device h2, .device h3 { color: var(--text-inverse); }
 .device p { color: rgba(7, 43, 49, 0.85); }
-.device .halftone {
-  position: absolute;
-  right: 0;
-  top: 0;
-  height: 100%;
-  width: min(58%, 640px);
-  object-fit: cover;
-  object-position: right center;
-  opacity: 0.9;
-  pointer-events: none;
-}
 .device > * { position: relative; }
-.device .halftone { position: absolute; }
+
+/* Halftone diagram (brand /5.2) as flowing dot columns.
+   Adjacent columns drift in opposite directions; disabled under
+   prefers-reduced-motion. */
+.device .halftone-flow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(58%, 640px);
+  display: flex;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(90deg, rgba(0,0,0,0), #000 58%);
+  mask: linear-gradient(90deg, rgba(0,0,0,0), #000 58%);
+}
+.halftone-flow i {
+  flex: 1;
+  --dr: 3.4px;
+  background-image: radial-gradient(circle, #fff var(--dr), rgba(255,255,255,0) calc(var(--dr) + 0.6px));
+  background-size: 26px 26px;
+  background-position: 50% 0;
+  animation: dot-flow 5s linear infinite;
+}
+.halftone-flow i:nth-child(even) { animation-direction: reverse; --dr: 3.9px; }
+.halftone-flow i:nth-child(3n) { animation-duration: 6.5s; --dr: 3px; }
+.halftone-flow i:nth-child(4n+1) { animation-duration: 4.2s; }
+@keyframes dot-flow {
+  to { background-position-y: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .halftone-flow i { animation: none; }
+}
 @media (max-width: 760px) {
-  .device .halftone { width: 80%; opacity: 0.35; }
+  .device .halftone-flow { width: 80%; opacity: 0.35; }
 }
 
-/* Corner cutout (brand /5.1 step 3): notch bottom-right using page bg.
-   The notch paints its own outer corner (border-bottom-right-radius) so the
-   effect never depends on the parent's rounded-clip antialiasing. */
-.device--cutout::after {
-  content: "";
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: min(28%, 240px);
-  height: clamp(48px, 7vw, 76px);
-  background: var(--ink);
-  border-top-left-radius: var(--radius-device);
-  border-bottom-right-radius: calc(var(--radius-device) + 2px);
+/* Corner cutout (brand /5.1 step 3), carved with a CSS mask so the
+   geometry is exact at any zoom / device-pixel-ratio — no overlay
+   element, no rounded-clip antialiasing seams. */
+.device--cutout {
+  --cut-w: min(28%, 240px);
+  --cut-h: clamp(48px, 7vw, 76px);
+  --cut-r: var(--radius-device);
+  -webkit-mask:
+    linear-gradient(#000 0 0) left top / 100% calc(100% - var(--cut-h)) no-repeat,
+    linear-gradient(#000 0 0) left bottom / calc(100% - var(--cut-w)) calc(var(--cut-h) + 1px) no-repeat,
+    radial-gradient(farthest-side at 100% 100%, rgba(0,0,0,0) calc(100% - 1px), #000)
+      right calc(var(--cut-w) - var(--cut-r)) bottom calc(var(--cut-h) - var(--cut-r))
+      / calc(var(--cut-r) + 1px) var(--cut-r) no-repeat;
+  mask:
+    linear-gradient(#000 0 0) left top / 100% calc(100% - var(--cut-h)) no-repeat,
+    linear-gradient(#000 0 0) left bottom / calc(100% - var(--cut-w)) calc(var(--cut-h) + 1px) no-repeat,
+    radial-gradient(farthest-side at 100% 100%, rgba(0,0,0,0) calc(100% - 1px), #000)
+      right calc(var(--cut-w) - var(--cut-r)) bottom calc(var(--cut-h) - var(--cut-r))
+      / calc(var(--cut-r) + 1px) var(--cut-r) no-repeat;
 }
 
 /* Dark card variant used inside light contexts */
