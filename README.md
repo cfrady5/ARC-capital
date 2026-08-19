@@ -1,9 +1,12 @@
-# ARC — Applied Research Capital website
+# PGC — Proving Ground Capital website
 
-Hand-built static rebuild of the ARC marketing site (previously on Wix), incorporating the
-August 2026 content updates: the About story moved to the homepage (including the
-ARI → ARC bridge and "Why ARC"), advisory services added for founders and companies,
-and a standalone Investment Thesis page.
+Hand-built static marketing site for Proving Ground Capital (formerly "ARC / Applied
+Research Capital", originally on Wix). Includes the August 2026 content updates (About
+story on the homepage with the ARI → PGC bridge, advisory services, standalone Investment
+Thesis page) and the PGC brand system from `PGC Brand Guidelines v1.0`: Funnel Display /
+Funnel Sans typography, mint (#3CDBC0) + dark (#072B31) palette with neutral greys,
+holding-device cards with corner cutouts, halftone diagram textures, and the approved
+microcopy set (`// PROVING GROUND CAPITAL //`, `>> DATA LOADED`, `< HQ / … >`, `(↗)`).
 
 ## Structure
 
@@ -12,7 +15,7 @@ Deployable as-is on any static host (Vercel, Netlify, Cloudflare Pages, S3, …)
 
 | Route | File | Page |
 |---|---|---|
-| `/` | `index.html` | Home — hero, About ARC, From ARI to ARC, Why ARC, platform, wayfinding |
+| `/` | `index.html` | Home — mint hero device, About PGC, From ARI to PGC, Why PGC, values, platform, wayfinding |
 | `/thesis/` | `thesis/index.html` | Investment Thesis — BIO × MICRO × ROBOTICS converging domains |
 | `/investors/` | `investors/index.html` | For Investors |
 | `/founders/` | `founders/index.html` | For Founders & Companies — capital, go-to-market, scale, advisory |
@@ -34,12 +37,9 @@ is a required radio group (the old Wix site used two independent checkboxes).
 
 ## TODO before launch
 
-1. **Company name.** The rename is still pending. When decided, update:
-   - all six `index.html` files (titles, meta descriptions, copy, JSON-LD in `index.html`),
-   - `assets/img/arc-logo.svg` and `assets/img/favicon.svg` (dot-matrix wordmark —
-     regenerate or redraw for the new name),
-   - this README.
-   `grep -ri "applied research capital\|ARC" --include="*.html"` finds every occurrence.
+1. **Domain + email.** Site copy now uses Proving Ground Capital / PGC. The contact
+   email is still `innovations@theari.us` — confirm whether PGC gets its own domain
+   and inbox, then update the six HTML files.
 2. **Form backend.** Both forms post to a placeholder (`https://formspree.io/f/YOUR_FORM_ID`).
    Create a Formspree form (or a serverless function + transactional email) and replace the
    placeholder in `contact/index.html` and the footer form in the other five pages. Until then,
@@ -61,13 +61,17 @@ is a required radio group (the old Wix site used two independent checkboxes).
 
 Defined in `assets/css/main.css` (tokens at the top):
 
-- **Palette:** ink `#072B31`, accent `#3CDBC0`, bright `#28FEDD`, body text `#C5D5D7`.
-  Thesis domain accents: `#3CDBC0` / `#38D4E8` / `#6BA6FF`.
-- **Type:** Space Grotesk (display), Inter (body), IBM Plex Mono (eyebrow labels) via
-  Google Fonts.
-- **Motifs:** `// EYEBROW //` labels (slashes are `aria-hidden`), white/teal split
-  headlines ending in a teal period, pill buttons with ↗, cards with asymmetric
-  bottom/left border glow.
+- **Palette (brand /2.1):** mint `#3CDBC0`, dark `#072B31`, white, light `#DDDDDD`,
+  grey `#54585A`, black `#101820`.
+- **Type (brand /4):** Funnel Display (headlines, medium, −25 tracking; microcopy at
+  +300 tracking) and Funnel Sans (body, bold paragraph headings) via Google Fonts.
+- **Motifs (brand /5):** `// MICROCOPY //` labels (decorations `aria-hidden`),
+  white/mint split headlines, rectangular uppercase buttons with `(↗)`, holding-device
+  cards with large radii and corner cutouts (`.device--cutout`), halftone diagram SVGs
+  (`assets/img/halftone-*.svg`).
+- **Logos:** `assets/img/pgc-mark-*.svg` (primary PGC mark), `pgc-wordmark-mint.svg`
+  and `pgc-logo-mint.svg` (secondary lockups), cropped from the brand package
+  (`PGC_Branding.zip`, not committed). Favicon embeds the mark on the dark tile.
 - **Motion:** scroll reveal via IntersectionObserver; fully disabled under
   `prefers-reduced-motion`, and content renders visible without JavaScript.
 
