@@ -271,34 +271,6 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   .device .halftone-flow { width: 80%; opacity: 0.35; }
 }
 
-/* Corner cutout (brand /5.1 step 3), carved with a CSS mask so the
-   geometry is exact at any zoom / device-pixel-ratio — no overlay
-   element, no rounded-clip antialiasing seams. */
-.device--cutout {
-  --cut-w: min(28%, 240px);
-  --cut-h: clamp(48px, 7vw, 76px);
-  --cut-r: var(--radius-device);
-  -webkit-mask:
-    linear-gradient(#000 0 0) left top / 100% calc(100% - var(--cut-h)) no-repeat,
-    linear-gradient(#000 0 0) left bottom / calc(100% - var(--cut-w)) calc(var(--cut-h) + 1px) no-repeat,
-    radial-gradient(farthest-side at 100% 100%, rgba(0,0,0,0) calc(100% - 1px), #000)
-      right calc(var(--cut-w) - var(--cut-r)) bottom calc(var(--cut-h) - var(--cut-r))
-      / calc(var(--cut-r) + 1px) var(--cut-r) no-repeat;
-  mask:
-    linear-gradient(#000 0 0) left top / 100% calc(100% - var(--cut-h)) no-repeat,
-    linear-gradient(#000 0 0) left bottom / calc(100% - var(--cut-w)) calc(var(--cut-h) + 1px) no-repeat,
-    radial-gradient(farthest-side at 100% 100%, rgba(0,0,0,0) calc(100% - 1px), #000)
-      right calc(var(--cut-w) - var(--cut-r)) bottom calc(var(--cut-h) - var(--cut-r))
-      / calc(var(--cut-r) + 1px) var(--cut-r) no-repeat;
-}
-/* The cutout needs desktop-scale room beside the content — below that
-   it reads as a floating tab, so show the plain rounded device instead */
-@media (max-width: 1023px) {
-  .device--cutout {
-    -webkit-mask: none;
-    mask: none;
-  }
-}
 
 /* Dark card variant used inside light contexts */
 .card--values {
