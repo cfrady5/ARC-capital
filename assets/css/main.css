@@ -704,8 +704,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 .disclaimer {
   font-size: 0.8rem;
   color: var(--text-dim);
-  border-top: 1px solid var(--hairline);
-  padding-top: 24px;
+  margin-top: 24px;
   max-width: 760px;
 }
 
