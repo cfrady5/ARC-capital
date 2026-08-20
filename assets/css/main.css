@@ -384,7 +384,12 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 .hero .crumb {
   margin-bottom: clamp(20px, 3vw, 32px);
 }
-.hero-plain { padding-top: clamp(64px, 9vw, 120px); }
+.hero-plain {
+  padding-top: clamp(64px, 9vw, 120px);
+  /* Bottom padding stays small — the following section supplies its own
+     top padding, so a full pad here doubles the gap */
+  padding-bottom: clamp(8px, 1.5vw, 20px);
+}
 .hero-plain h1 { max-width: 25ch; }
 .hero .sub, .hero-plain .sub {
   max-width: 620px;
