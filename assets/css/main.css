@@ -528,12 +528,14 @@ main > section:nth-of-type(even) { background: var(--ink-alt); }
 .domains {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: clamp(24px, 4vw, 56px);
+  column-gap: clamp(24px, 4vw, 56px);
+  row-gap: 0;
   margin-top: clamp(20px, 3vw, 32px);
 }
 .domain { border-top: 2px solid var(--mint); padding-top: 18px; }
 /* Align meta / name / description / scope / list rows across the three
-   columns so the focus bullets line up */
+   columns so the focus bullets line up. Row gap stays 0 so each element's
+   own margin controls the rhythm instead of the grid gap. */
 @supports (grid-template-rows: subgrid) {
   @media (min-width: 901px) {
     .domain {
@@ -541,7 +543,12 @@ main > section:nth-of-type(even) { background: var(--ink-alt); }
       grid-template-rows: subgrid;
       grid-row: span 5;
       align-content: start;
+      row-gap: 0;
     }
+    .domain > * { margin-bottom: 0; }
+    .domain h3.domain-name { margin-bottom: 0.3em; }
+    .domain .domain-desc { margin-bottom: 0.5em; }
+    .domain .domain-scope { margin-bottom: 1em; }
   }
 }
 .domain-meta {
