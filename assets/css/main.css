@@ -115,8 +115,9 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 }
 
 .section { padding-block: clamp(60px, 9vw, 110px); }
-/* Alternate section bands: every other section gets the grey surface */
-main > section:nth-of-type(even) { background: var(--ink-alt); }
+/* Grey band, applied deliberately to sections that should stand out
+   (data, operating model, advisory). Never two in a row. */
+.section--alt { background: var(--ink-alt); }
 
 .section-head {
   max-width: 740px;
