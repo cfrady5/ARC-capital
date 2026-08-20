@@ -9,6 +9,7 @@
 :root {
   --ink: #072B31;          /* brand dark */
   --ink-2: #0A343B;        /* elevated dark surface */
+  --ink-alt: #16292E;      /* grey section band */
   --black: #101820;
   --grey: #54585A;
   --light: #DDDDDD;
@@ -114,7 +115,8 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 }
 
 .section { padding-block: clamp(60px, 9vw, 110px); }
-.section + .section { border-top: 1px solid var(--hairline); }
+/* Alternate section bands: every other section gets the grey surface */
+main > section:nth-of-type(even) { background: var(--ink-alt); }
 
 .section-head {
   max-width: 740px;
@@ -530,6 +532,18 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   margin-top: clamp(20px, 3vw, 32px);
 }
 .domain { border-top: 2px solid var(--mint); padding-top: 18px; }
+/* Align meta / name / description / scope / list rows across the three
+   columns so the focus bullets line up */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 901px) {
+    .domain {
+      display: grid;
+      grid-template-rows: subgrid;
+      grid-row: span 5;
+      align-content: start;
+    }
+  }
+}
 .domain-meta {
   display: flex;
   justify-content: space-between;
@@ -621,8 +635,8 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   font-size: 0.72rem;
   line-height: 1.6;
   color: var(--text-dim);
-  max-width: 860px;
 }
+.sources strong, .disclaimer strong { color: var(--text-body); font-weight: 600; }
 
 /* ---------- Phase cards ---------- */
 .phase-meta {
@@ -705,7 +719,6 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   font-size: 0.8rem;
   color: var(--text-dim);
   margin-top: 24px;
-  max-width: 760px;
 }
 
 /* ---------- Team ---------- */
