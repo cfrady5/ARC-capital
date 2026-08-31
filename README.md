@@ -6,8 +6,8 @@ Research Capital", originally on Wix). Content follows the PGC Capital Markets B
 Board ratification), market-scale stats, advisory services, standalone Investment Thesis,
 and updated team. Indicative SPV economics, service pricing, and internal governance
 details are deliberately omitted from the public site; disclaimers are included instead.
-Design follows the PGC brand system from `PGC Brand Guidelines v1.0`: Funnel Display /
-Funnel Sans typography, mint (#3CDBC0) + dark (#072B31) palette with neutral greys,
+Design follows the PGC brand system from `PGC Brand Guidelines v1.0`: Funnel Sans
+typography, mint (#3CDBC0) + dark (#072B31) palette with neutral greys,
 holding-device cards with corner cutouts, halftone diagram textures, and the approved
 microcopy set (`// PROVING GROUND CAPITAL //`, `>> DATA LOADED`, `< HQ / … >`, `(↗)`).
 
@@ -66,8 +66,10 @@ Defined in `assets/css/main.css` (tokens at the top):
 
 - **Palette (brand /2.1):** mint `#3CDBC0`, dark `#072B31`, white, light `#DDDDDD`,
   grey `#54585A`, black `#101820`.
-- **Type (brand /4):** Funnel Display (headlines, medium, −25 tracking; microcopy at
-  +300 tracking) and Funnel Sans (body, bold paragraph headings) via Google Fonts.
+- **Type:** Funnel Sans only, via Google Fonts (weights 300–700). Headlines use the
+  regular weight with tight tracking; microcopy uses medium at +300 tracking; paragraph
+  headings use bold. `--font-display` is an alias of `--font-sans` so display-role rules
+  stay identifiable in the stylesheet.
 - **Motifs (brand /5):** `// MICROCOPY //` labels (decorations `aria-hidden`),
   white/mint split headlines, rectangular uppercase buttons with `(↗)`, holding-device
   cards with large radii and corner cutouts (`.device--cutout`), halftone diagram SVGs

@@ -2,7 +2,7 @@
    PGC — Proving Ground Capital
    Design system & site styles, per PGC Brand Guidelines v1.0
    Palette: Mint #3CDBC0 · Dark #072B31 · neutrals FFFFFF /
-   DDDDDD / 54585A / 101820. Type: Funnel Display + Funnel Sans.
+   DDDDDD / 54585A / 101820. Type: Funnel Sans (single family).
    ============================================================ */
 
 /* ---------- Tokens ---------- */
@@ -26,8 +26,10 @@
   --line-strong: rgba(60, 219, 192, 0.45);
   --hairline: rgba(221, 221, 221, 0.1);
 
-  --font-display: "Funnel Display", "Segoe UI", system-ui, sans-serif;
+  /* Funnel Sans is the single typeface; --font-display is kept as an alias
+     so display-role rules (headlines, microcopy) stay identifiable. */
   --font-sans: "Funnel Sans", system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-sans);
 
   --container: 1140px;
   --gutter: clamp(20px, 5vw, 40px);
@@ -59,7 +61,7 @@ img, svg { max-width: 100%; height: auto; display: block; }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-heading);
   line-height: 1.04;
   margin: 0 0 0.5em;
@@ -294,7 +296,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 .card--values .value-word {
   margin-top: auto;
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 400;
   font-size: clamp(1.7rem, 3.4vw, 2.4rem);
   letter-spacing: -0.02em;
   color: var(--black);
@@ -441,7 +443,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 }
 .bridge-node .org {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 400;
   font-size: 1.7rem;
   letter-spacing: -0.02em;
   color: var(--white);
@@ -476,7 +478,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 .closing { text-align: center; position: relative; overflow: hidden; }
 .closing .statement {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 400;
   font-size: clamp(1.6rem, 3.8vw, 2.6rem);
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -635,7 +637,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 /* ---------- Stats band ---------- */
 .stat .stat-n {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 400;
   font-size: clamp(2.2rem, 4.5vw, 3.4rem);
   letter-spacing: -0.02em;
   line-height: 1;
@@ -968,7 +970,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 .footer-tagline {
   color: var(--white);
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 400;
   font-size: 1.2rem;
   letter-spacing: -0.01em;
   max-width: 30ch;
