@@ -128,6 +128,9 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 .section-head .lead { font-size: 1.05rem; }
 
 .grid { display: grid; gap: clamp(16px, 2.5vw, 24px); }
+/* Grid tracks default to min-content width, so wide unbreakable content
+   would push a column past the container. */
+.grid > * { min-width: 0; }
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
@@ -169,7 +172,14 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   cursor: pointer;
   transition: background-color 0.18s ease, color 0.18s ease,
               border-color 0.18s ease, transform 0.18s ease;
-  white-space: nowrap;
+  /* Wrap rather than overflow: a long uppercase label with wide tracking
+     can exceed a narrow card/grid column. */
+  white-space: normal;
+  text-align: center;
+  max-width: 100%;
+}
+@media (max-width: 1100px) {
+  .btn { letter-spacing: 0.16em; }
 }
 .btn .arrow { letter-spacing: 0; }
 
