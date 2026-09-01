@@ -74,9 +74,12 @@ Defined in `assets/css/main.css` (tokens at the top):
   white/mint split headlines, rectangular uppercase buttons with `(↗)`, holding-device
   cards with large radii and corner cutouts (`.device--cutout`), halftone diagram SVGs
   (`assets/img/halftone-*.svg`).
-- **Logos:** `assets/img/pgc-mark-*.svg` (primary PGC mark), `pgc-wordmark-mint.svg`
-  and `pgc-logo-mint.svg` (secondary lockups), cropped from the brand package
-  (`PGC_Branding.zip`, not committed). Favicon embeds the mark on the dark tile.
+- **Logos:** from `PGC_Logos_v2_20260825.zip` (2026-08-25 revision, not committed).
+  `pgc-logo-mint.svg` / `pgc-logo-dark.svg` are the full stacked lockup (footer, hero);
+  `pgc-mark-mint.svg` / `pgc-mark-dark.svg` are the PGC letters alone (header), extracted
+  from the lockup since v2 ships no standalone mark; `pgc-wordmark-mint.svg` is the
+  Proving Ground Capital wordmark. All are reframed to tight bounds. The favicon embeds
+  the PGC letters on the dark tile.
 - **Motion:** scroll reveal via IntersectionObserver; fully disabled under
   `prefers-reduced-motion`, and content renders visible without JavaScript.
 
