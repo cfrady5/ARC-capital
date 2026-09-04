@@ -1,6 +1,6 @@
-# PGC — Proving Ground Capital website
+# Proving Ground Capital (PGC) website
 
-Hand-built static marketing site for Proving Ground Capital (formerly "ARC / Applied
+Hand-built static marketing site for Proving Ground Capital (PGC) (formerly "ARC / Applied
 Research Capital", originally on Wix). Content follows the PGC Capital Markets Brief
 (July 2026): ARI → PGC bridge, two-phase operating model (advisory now, SPVs gated on
 Board ratification), market-scale stats, advisory services, standalone Investment Thesis,
@@ -40,7 +40,8 @@ is a required radio group (the old Wix site used two independent checkboxes).
 
 ## TODO before launch
 
-1. **Domain + email.** Site copy now uses Proving Ground Capital / PGC. The contact
+1. **Domain + email.** Site copy spells out "Proving Ground Capital (PGC)" throughout.
+   The contact
    email is still `innovations@theari.us` — confirm whether PGC gets its own domain
    and inbox, then update the six HTML files.
 2. **Form backend.** Both forms post to a placeholder (`https://formspree.io/f/YOUR_FORM_ID`).
@@ -76,9 +77,10 @@ Defined in `assets/css/main.css` (tokens at the top):
   (`assets/img/halftone-*.svg`).
 - **Logos:** from `PGC_Logos_v2_20260825.zip` (2026-08-25 revision, not committed).
   `pgc-logo-mint.svg` / `pgc-logo-dark.svg` are the full stacked lockup (footer, hero);
-  `pgc-mark-mint.svg` / `pgc-mark-dark.svg` are the PGC letters alone (header), extracted
+  `pgc-mark-mint.svg` / `pgc-mark-dark.svg` are the PGC letters alone, extracted
   from the lockup since v2 ships no standalone mark; `pgc-wordmark-mint.svg` is the
-  Proving Ground Capital wordmark. All are reframed to tight bounds. The favicon embeds
+  Proving Ground Capital wordmark. The header pairs the mark and wordmark
+  (`.brand-mark` + `.brand-wordmark`) so the logo itself spells out the full name. All are reframed to tight bounds. The favicon embeds
   the PGC letters on the dark tile.
 - **Motion:** scroll reveal via IntersectionObserver; fully disabled under
   `prefers-reduced-motion`, and content renders visible without JavaScript.

@@ -330,8 +330,20 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   gap: 24px;
   min-height: 74px;
 }
-.brand { display: inline-flex; align-items: center; }
-.brand img { height: 26px; width: auto; }
+.brand { display: inline-flex; align-items: center; gap: 12px; }
+.brand-mark { height: 26px; width: auto; }
+/* Wordmark spells out the name beside the PGC mark */
+.brand-wordmark {
+  height: 21px;
+  width: auto;
+  padding-left: 12px;
+  border-left: 1px solid var(--line-strong);
+}
+@media (max-width: 420px) {
+  .brand { gap: 8px; }
+  .brand-mark { height: 22px; }
+  .brand-wordmark { height: 17px; padding-left: 8px; }
+}
 
 .site-nav ul {
   list-style: none;
