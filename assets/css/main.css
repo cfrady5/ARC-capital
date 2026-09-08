@@ -762,7 +762,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 .team-card { display: flex; flex-direction: column; }
 .team-card .headshot {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   object-fit: contain;
   object-position: bottom;
   margin-bottom: 20px;
@@ -770,7 +770,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
 }
 .team-card .headshot--photo {
   object-fit: cover;
-  object-position: center top;
+  object-position: center;
   border-bottom: none;
   border-radius: calc(var(--radius-card) - 8px);
 }
