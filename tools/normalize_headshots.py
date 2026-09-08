@@ -5,9 +5,10 @@ For every source photo:
   1. Detect the face (and eyes where possible).
   2. Crop to 4:5 so the eye line sits at EYE_Y of the frame height and the
      head occupies the same proportion of the frame in every card.
-  3. Apply a subtle brand duotone (per PGC Brand Guidelines /6.1) so the
-     mismatched backgrounds — studio grey, brick, foliage, dark bar —
-     read as one set.
+  3. Match exposure so every face reads at the same brightness across the
+     mismatched sources — studio grey, brick, foliage, dark bar.
+
+Photos stay in natural color; no duotone or gradient treatment is applied.
 
 Output: 720x900 WebP.
 """
@@ -16,18 +17,16 @@ import cv2
 import numpy as np
 from PIL import Image
 
-SCRATCH = os.path.dirname(os.path.abspath(__file__))
+# Directory holding the original photos (not committed — they are the
+# unprocessed source files). Override with PGC_HEADSHOT_SRC.
+SRC_DIR = os.environ.get("PGC_HEADSHOT_SRC",
+                         os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = "/home/user/ARC-capital/assets/img"
 
 # --- Framing constants (the whole point: identical across every card) ---
 OUT_W, OUT_H = 720, 900          # 4:5
 EYE_Y = 0.36                     # eye line at ~upper third
 FACE_H_FRAC = 0.40               # face box height as a fraction of frame height
-
-# --- Brand duotone ---
-SHADOW = np.array([10, 40, 46], dtype=np.float32)     # deep teal
-HIGHLIGHT = np.array([228, 245, 242], dtype=np.float32)  # mint-tinted white
-DUOTONE_MIX = 0.55               # blend against the desaturated original
 
 SOURCES = {
     "team-jeron-peoples.webp":     "headshots3/PGC Headshots/Jeron.jpg",
@@ -79,20 +78,8 @@ def match_exposure(pil_img, face_box, target=0.56):
     return Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8)), gamma
 
 
-def duotone(pil_img):
-    a = np.asarray(pil_img).astype(np.float32) / 255.0
-    lum = (0.299 * a[..., 0] + 0.587 * a[..., 1] + 0.114 * a[..., 2])
-    # gentle S-curve so faces keep modelling
-    lum = np.clip((lum - 0.5) * 1.06 + 0.5, 0, 1)
-    ramp = (SHADOW[None, None, :] / 255.0 * (1 - lum[..., None])
-            + HIGHLIGHT[None, None, :] / 255.0 * lum[..., None])
-    desat = np.repeat(lum[..., None], 3, axis=2) * 0.35 + a * 0.65
-    out = ramp * DUOTONE_MIX + desat * (1 - DUOTONE_MIX)
-    return Image.fromarray((np.clip(out, 0, 1) * 255).astype(np.uint8))
-
-
 def process(src_rel, out_name):
-    src = os.path.join(SCRATCH, src_rel)
+    src = os.path.join(SRC_DIR, src_rel)
     bgr = cv2.imread(src)
     if bgr is None:
         raise RuntimeError(f"cannot read {src}")
@@ -126,7 +113,6 @@ def process(src_rel, out_name):
     fb = (max(0, int((fx - left) * sx)), max(0, int((fy - top) * sy)),
           min(OUT_W, int((fx + fw - left) * sx)), min(OUT_H, int((fy + fh - top) * sy)))
     img, gamma = match_exposure(img, fb)
-    img = duotone(img)
     img.save(os.path.join(OUT_DIR, out_name), "WEBP", quality=86, method=6)
 
     # Report where the eye line and face actually landed post-crop.

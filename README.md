@@ -53,8 +53,8 @@ is a required radio group (the old Wix site used two independent checkboxes).
    a captcha as well. Confirm the real destination inbox with the team.
 3. **Team headshots.** All seven have photos, normalized to one system by
    `tools/normalize_headshots.py`: 4:5 portrait (720×900 WebP), eye line at 36% of
-   frame height, matched head size and exposure, and a brand duotone so the varied
-   backgrounds read as one set. Three sources are only 400×400 (Seaford, Griffin,
+   frame height, and matched head size and exposure. Photos stay in natural color.
+   Three sources are only 400×400 (Seaford, Griffin,
    Hunt) and are upscaled — request higher-resolution originals when available.
    Re-run the script after replacing any source photo.
 4. **Open Graph image.** No `og:image` yet — export a 1200×630 card from the wordmark
