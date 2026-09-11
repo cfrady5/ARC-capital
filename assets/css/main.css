@@ -790,6 +790,9 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   margin-bottom: 0.6em;
 }
 .team-card .bio { flex: 1; font-size: 0.95rem; }
+/* Multi-paragraph bios */
+.team-card .bio p { margin-bottom: 0.85em; }
+.team-card .bio p:last-child { margin-bottom: 0; }
 .team-links {
   display: flex;
   gap: 10px;
