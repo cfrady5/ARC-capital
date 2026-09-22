@@ -223,7 +223,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
-  padding: clamp(24px, 3vw, 34px);
+  padding: clamp(20px, 2.2vw, 28px);
 }
 .card .eyebrow { font-size: 0.68rem; letter-spacing: 0.24em; margin-bottom: 1.1em; }
 .card h3 {
@@ -765,7 +765,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   aspect-ratio: 4 / 5;
   object-fit: contain;
   object-position: bottom;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   border-bottom: 1px solid var(--hairline);
 }
 .team-card .headshot--photo {
@@ -789,7 +789,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   color: var(--white);
   margin-bottom: 0.6em;
 }
-.team-card .bio { flex: 1; font-size: 0.95rem; }
+.team-card .bio { flex: 1; font-size: 0.89rem; line-height: 1.5; }
 /* Multi-paragraph bios */
 .team-card .bio p { margin-bottom: 0.85em; }
 .team-card .bio p:last-child { margin-bottom: 0; }
@@ -797,7 +797,7 @@ h1 .accent, h2 .accent, .statement .accent { display: inline-block; }
   display: flex;
   gap: 10px;
   justify-content: flex-end;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 .team-links a {
   display: inline-flex;
