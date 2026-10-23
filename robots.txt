@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /portal/
 
-# TODO: add "Sitemap: https://<final-domain>/sitemap.xml" once the domain is decided.
+Sitemap: https://pgc.capital/sitemap.xml

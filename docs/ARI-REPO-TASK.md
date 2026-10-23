@@ -1,6 +1,6 @@
 # Task for cfrady5/ARI — grant "Proving Ground Capital pages" from Users & Access
 
-The Proving Ground Capital website (cfrady5/ARC-capital, provinggroundcapital.vercel.app)
+The Proving Ground Capital website (cfrady5/ARC-capital, pgc.capital)
 now has an employee portal at `/portal/` that uses ARI's Supabase project for sign-in,
 permissions and content. Its permission is a new `employee_access` module, **`pgc`**,
 with levels `contributor | publisher`. Administrators have it implicitly (the module is
@@ -16,12 +16,12 @@ the invite function, so administrators can grant the permission.
 ```js
 export const MODULES = ["pages", "newsroom", "calendar", "evsites", "pulse", "newsletter", "babble", "messages", "documents", "pgc"];
 MODULE_LABEL.pgc = "Proving Ground Capital pages";
-MODULE_DESC.pgc  = "The Proving Ground Capital website (provinggroundcapital.vercel.app): contributors edit drafts and submit them for review; publishers publish, unpublish and undo. Edited at provinggroundcapital.vercel.app/portal/.";
+MODULE_DESC.pgc  = "The Proving Ground Capital website (pgc.capital): contributors edit drafts and submit them for review; publishers publish, unpublish and undo. Edited at pgc.capital/portal/.";
 ```
 
 `EXPLICIT_MODULES` is unchanged — administrators keep the module automatically.
 No `WORKSPACES` entry: the editor lives on the PGC site, not in the ARI portal.
-(Optional: a nav link `{ href: "https://provinggroundcapital.vercel.app/portal/", label: "PGC website editor", icon: "site", when: (a) => a.canEdit("pgc") }` under My Workspace, the way the Program Chart is linked.)
+(Optional: a nav link `{ href: "https://pgc.capital/portal/", label: "PGC website editor", icon: "site", when: (a) => a.canEdit("pgc") }` under My Workspace, the way the Program Chart is linked.)
 
 ## 2. `assets/users-access.js`
 

@@ -35,7 +35,7 @@ Links are root-relative (`/thesis/`), so the site must be served from a domain r
 |---|---|
 | `portal/` + `assets/js/portal.js` + `assets/css/portal.css` | Employee website editor (see below) |
 | `assets/js/supabase.js`, `assets/js/content.js` | Supabase client (publishable key) and the public-site content layer |
-| `supabase/migrations/` | The three `pgc_*` migrations — **not applied until you apply them** |
+| `supabase/migrations/` | The three `pgc_*` migrations (applied to production 2026-10-23) |
 | `tests/` | Playwright suites with a Supabase stub, SQL RLS tests (`tests/README.md`) |
 | `tools/dump_content.mjs` | Regenerates the seed migration from the served pages |
 | `docs/ARI-REPO-TASK.md` | The change to make in cfrady5/ARI so the permission can be granted |
@@ -90,7 +90,7 @@ version back (publishers). Images go to the public `pgc-media` bucket (images on
 As in ARI (§49.6), a contributor cannot edit a page that is live; a publisher edits live
 rows directly (the history keeps every version) or unpublishes first.
 
-### Applying the migrations (in this order, none applied yet)
+### The migrations (applied to production 2026-10-23, in this order)
 
 1. `supabase/migrations/20261023_pgc_site_content.sql` — tables, module, RLS, triggers, undo.
 2. `supabase/migrations/20261023_pgc_media_bucket.sql` — the `pgc-media` bucket + policies.
@@ -99,8 +99,8 @@ rows directly (the history keeps every version) or unpublishes first.
    in the portal offers **Start from the live page**, which creates the same rows as drafts.
    Regenerate with `node tools/dump_content.mjs` after editing the HTML.
 
-Then: Supabase → Authentication → URL configuration: add `https://provinggroundcapital.vercel.app`
-and `https://provinggroundcapital.vercel.app/portal/**` as redirect URLs (magic links land
+Then: Supabase → Authentication → URL configuration: add `https://pgc.capital`
+and `https://pgc.capital/portal/**` as redirect URLs (magic links land
 on `/portal/`). Email confirmation stays on; the portal never creates accounts
 (`shouldCreateUser: false`). Grant people the permission in ARI's Users & Access once
 `docs/ARI-REPO-TASK.md` is done.
@@ -144,8 +144,8 @@ is a required radio group (the old Wix site used two independent checkboxes).
    Re-run the script after replacing any source photo.
 4. **Open Graph image.** No `og:image` yet — export a 1200×630 card from the wordmark
    and add the tag to each page's `<head>`.
-5. **Sitemap.** Add `sitemap.xml` and the `Sitemap:` line in `robots.txt` once the
-   domain is decided.
+5. **Sitemap.** Done — `sitemap.xml` lists the six pages at `https://pgc.capital/` and
+   `robots.txt` points to it (and disallows `/portal/`).
 6. **Legal.** No privacy policy / disclosures pages exist yet; the securities disclaimer
    currently appears only on `/thesis/`. An investment firm will likely need proper
    disclosure pages before broad launch.

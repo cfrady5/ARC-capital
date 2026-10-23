@@ -1,8 +1,9 @@
 -- ============================================================================
 -- Proving Ground Capital (PGC) — editable website content.          2026-10-23
 --
--- NOT APPLIED. Apply this file first, then 20261023_pgc_media_bucket.sql,
--- then (optionally) 20261023_pgc_seed_content.sql.
+-- APPLIED to production 2026-10-23 (verified: 4 tables, 16 policies, 8 triggers,
+-- module check includes 'pgc', pgc_restore_revision present, anon has SELECT only).
+-- Order: this file, then 20261023_pgc_media_bucket.sql, then 20261023_pgc_seed_content.sql.
 --
 -- Additive only. Nothing here alters, drops or re-creates an existing ARI
 -- table, function, policy or trigger. The single exception is the
@@ -15,7 +16,7 @@
 --      NOT explicit: ARI administrators have it automatically, because
 --      has_access() short-circuits on is_admin().
 --   2. Four content tables, all prefixed pgc_:
---        pgc_pages     one row per page of provinggroundcapital.vercel.app
+--        pgc_pages     one row per page of pgc.capital
 --        pgc_sections  the ordered blocks of a page (text, items, images)
 --        pgc_team      the people on /team/
 --        pgc_settings  site-wide values (footer lines, contact address, …)

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Proving Ground Capital (PGC) — images for the website.            2026-10-23
 --
--- NOT APPLIED. Apply after 20261023_pgc_site_content.sql.
+-- APPLIED to production 2026-10-23 (verified: bucket pgc-media + 4 policies).
 --
 -- A public bucket, because every file in it is shown on a public page
 -- (headshots, section images). Images only, 8 MB a file. Anyone with
