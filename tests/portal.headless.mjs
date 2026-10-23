@@ -168,10 +168,12 @@ const noticeText = (p) => text(p, "#pNotice");
   // Draft page: can edit, submit, but no Publish
   let b = await buttons(p);
   check(r, "draftActions", b.includes("Save draft") && b.includes("Submit for review") && !b.includes("Publish") && !b.includes("Unpublish") && !b.includes("Request changes"), b);
-  await expand(p, "Security and growth");
-  check(r, "expandedCardHasHeight", await p.evaluate(() => { const t = [...document.querySelectorAll(".p-toggle")].find((x) => x.textContent.trim() === "Security and growth"); return t.closest(".p-card").querySelector(".p-card-body").offsetHeight > 100; }));
-  check(r, "editsDraftField", await setField(p, "Headline", "Security and growth, edited"));
-  check(r, "editsItemField", await setField(p, "Title", "$9.9T"));
+  // Cards are titled "<what the section is> — <its headline>" (editor-schema.js).
+  await expand(p, "Market scale — Security and growth");
+  check(r, "expandedCardHasHeight", await p.evaluate(() => { const t = [...document.querySelectorAll(".p-toggle")].find((x) => x.textContent.trim() === "Market scale — Security and growth"); return t.closest(".p-card").querySelector(".p-card-body").offsetHeight > 100; }));
+  check(r, "schemaDrivenFields", await p.evaluate(() => { const t = [...document.querySelectorAll(".p-toggle")].find((x) => x.textContent.trim() === "Market scale — Security and growth"); const body = t.closest(".p-card").querySelector(".p-card-body"); const labels = [...body.querySelectorAll("label")].map((l) => l.textContent.trim()); return /Grey band/.test(body.textContent) && labels.includes("Headline — white part") && labels.includes("Big number") && labels.includes("What the number means") && !labels.includes("Kicker"); }));
+  check(r, "editsDraftField", await setField(p, "Headline — white part", "Security and growth, edited"));
+  check(r, "editsItemField", await setField(p, "Big number", "$9.9T"));
   // Add a section + reorder with keyboard-reachable buttons
   await p.selectOption(".p-add select", "cards");
   await p.click(".p-add .btn");
@@ -179,7 +181,7 @@ const noticeText = (p) => text(p, "#pNotice");
   check(r, "addsSection", count === 3, count);
   await p.evaluate(() => [...document.querySelectorAll(".p-sections .p-card")].pop().querySelector('[aria-label="Move section up"]').click());
   const order = await p.evaluate(() => [...document.querySelectorAll(".p-sections .p-card .p-toggle")].map((x) => x.textContent.trim()));
-  check(r, "reordersSections", order[1] === "Cards" && order[2] === "Security and growth, edited", order);
+  check(r, "reordersSections", order[1] === "Cards" && order[2] === "Market scale — Security and growth, edited", order);
   // Live preview received the draft
   const previewHeading = await p.evaluate(async () => {
     const f = document.querySelector(".p-preview iframe");
@@ -189,6 +191,8 @@ const noticeText = (p) => text(p, "#pNotice");
   check(r, "livePreviewReflectsDraft", /Security and growth, edited/.test(previewHeading) && /are the same bet\./.test(previewHeading), previewHeading);
   const previewStat = await p.evaluate(() => { const f = document.querySelector(".p-preview iframe"); return (f.contentDocument.querySelector('[data-pgc-section="market-scale"] .stat-n') || {}).textContent; });
   check(r, "livePreviewReflectsItem", previewStat === "$9.9T", previewStat);
+  // The preview is debounced; give the post-reorder message time to land.
+  await p.waitForFunction(() => { const f = document.querySelector(".p-preview iframe"); return f && f.contentDocument && f.contentDocument.querySelectorAll("[data-pgc-rendered]").length > 0; }, null, { timeout: 4000 }).catch(() => {});
   const previewNew = await p.evaluate(() => { const f = document.querySelector(".p-preview iframe"); return f.contentDocument.querySelectorAll("[data-pgc-rendered]").length; });
   check(r, "livePreviewRendersNewSection", previewNew === 1, previewNew);
   // Save draft
@@ -220,8 +224,8 @@ const noticeText = (p) => text(p, "#pNotice");
   // Live page is locked for a contributor
   await openPage(p, "home");
   check(r, "livePageLockedNotice", /Contributors cannot change published content/.test(await noticeText(p)));
-  await expand(p, "Our edge is structural access —");
-  check(r, "livePageFieldsReadonly", !(await setField(p, "Headline", "x")));
+  await expand(p, "Why PGC — Our edge is structural access —");
+  check(r, "livePageFieldsReadonly", !(await setField(p, "Headline — white part", "x")));
   b = await buttons(p);
   check(r, "livePageActions", b.length === 1 && b[0] === "Save draft", b);
   const removeBtns = await p.evaluate(() => document.querySelectorAll('.p-sections [aria-label="Remove section"]').length);
@@ -248,15 +252,18 @@ const noticeText = (p) => text(p, "#pNotice");
   check(r, "levelBadge", (await text(p, "#pLevel")) === "Publisher");
   let b = await buttons(p);
   check(r, "draftActions", b.includes("Publish") && b.includes("Submit for review") && !b.includes("Unpublish"), b);
-  await expand(p, "Security and growth");
-  await setField(p, "Headline", "Published heading");
+  await expand(p, "Market scale — Security and growth");
+  await setField(p, "Headline — white part", "Published heading");
   check(r, "publishClicked", await clickAction(p, "Publish"));
   await p.waitForSelector(".p-actions", { timeout: 8000 });
   const pub = await p.evaluate(() => ({ page: window.__TABLES.pgc_pages.find((x) => x.id === "pg-thesis"), secs: window.__TABLES.pgc_sections.filter((s) => s.page_id === "pg-thesis").map((s) => [s.published, s.review_state, s.heading]) }));
   check(r, "publishedAll", pub.page.published === true && pub.page.review_state === "draft" && pub.secs.every((s) => s[0] === true && s[1] === "draft") && pub.secs.some((s) => s[2] === "Published heading"), pub);
   b = await buttons(p);
   check(r, "liveActions", b.includes("Unpublish") && b.includes("Save") && !b.includes("Publish"), b);
-  check(r, "liveNotice", /Saving changes updates the public site immediately/.test(await noticeText(p)));
+  // The save result stays on screen after the redraw (and says the public site changed).
+  check(r, "publishNotice", /Published \(\d+ items\) — the public site now shows this version\./.test(await noticeText(p)), await noticeText(p));
+  await openPage(p, "home"); await openPage(p, "thesis");
+  check(r, "liveNotice", /Saving changes updates the public site immediately/.test(await noticeText(p)), await noticeText(p));
   // Request changes on something in review: seed state via the home page's draft? Use the stub: set s-why to draft+in_review
   await p.evaluate(() => { const s = window.__TABLES.pgc_sections.find((x) => x.id === "s-why"); s.published = false; s.review_state = "in_review"; });
   await openPage(p, "home");

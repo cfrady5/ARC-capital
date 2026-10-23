@@ -84,6 +84,13 @@ pages.forEach((p, pi) => {
     sql += `select id, ${q(s.section_key)}, ${q(s.kind)}, ${q(s.eyebrow)}, ${q(s.heading)}, ${q(s.heading_accent)}, ${q(s.kicker)}, ${q(s.lead)}, ${q(s.note)}, ${j(s.bullets)}, ${j(s.items)}, ${q(s.band)}, ${s.sort_order}, true, 'draft'\n`;
     sql += `  from public.pgc_pages where slug = ${q(p.def.slug)}\n`;
     sql += `on conflict (page_id, section_key) do nothing;\n\n`;
+    // One-off pieces (data-pgc-extra) live in pgc_sections.extra, added by
+    // 20261024_pgc_sections_extra.sql; written only when that column exists.
+    if (s.extra && Object.keys(s.extra).length) {
+      sql += `do $$ begin if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'pgc_sections' and column_name = 'extra') then\n`;
+      sql += `  update public.pgc_sections s set extra = coalesce(s.extra, '{}'::jsonb) || ${j(s.extra)} from public.pgc_pages p where s.page_id = p.id and p.slug = ${q(p.def.slug)} and s.section_key = ${q(s.section_key)} and not (coalesce(s.extra, '{}'::jsonb) ?& ${"array[" + Object.keys(s.extra).map(q).join(", ") + "]"});\n`;
+      sql += `end if; end $$;\n\n`;
+    }
   });
 });
 sql += `-- ---------------- team ----------------\n`;

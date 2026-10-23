@@ -11,6 +11,7 @@
 */
 import { supabase, PGC_MODULE, PGC_BUCKET } from "./supabase.js";
 import { readPage, readTeamGrid } from "./content.js";
+import { schemaFor } from "./editor-schema.js";
 
 /* ------------------------------------------------------------- constants */
 const PAGE_DEFS = [
@@ -24,10 +25,14 @@ const PAGE_DEFS = [
 const KINDS = { hero: "Hero", rich: "Text block", cards: "Cards", ticks: "Checklist cards", statement: "Statement / quote", cta: "Call to action" };
 const STATE_LABEL = { draft: "Draft", in_review: "In review", changes_requested: "Changes requested", published: "Published" };
 const TABLES = ["pgc_pages", "pgc_sections", "pgc_team", "pgc_settings"];
+/* `extra` holds one-off pieces such as the Thesis lens banner. It is only sent
+   once the column exists, so this file can ship before the migration runs. */
+const SECTION_COLS = () => ["page_id", "section_key", "kind", "eyebrow", "heading", "heading_accent", "kicker", "lead", "note", "bullets", "items", "image_url", "image_alt", "band", "sort_order", "published", "review_state"].concat(state.hasExtra ? ["extra"] : []);
 const SETTING_DEFS = [
-  { key: "footer_tagline", label: "Footer tagline" },
-  { key: "footer_disclaimer", label: "Footer disclosure" },
-  { key: "contact_email", label: "Contact email address" },
+  { key: "footer_tagline", label: "Footer tagline", hint: "Under the logo in the footer of every page." },
+  { key: "footer_disclaimer", label: "Footer disclosure", hint: "The small legal line near the bottom of every page." },
+  { key: "contact_email", label: "Contact email address", hint: "Footer of every page and the Contact page sidebar." },
+  { key: "hq_location", label: "HQ line", hint: "Shown as < HQ / Indianapolis, IN > in the footer and on the Contact page." },
 ];
 
 /* ---------------------------------------------------------------- utils */
@@ -179,6 +184,10 @@ async function loadPages() {
   const { data, error } = await supabase.from("pgc_pages").select("*").order("sort_order", { ascending: true });
   if (error) { notice("Could not load the page list: " + errText(error), true); state.pages = []; return; }
   state.pages = data || [];
+  if (state.hasExtra == null) {
+    const probe = await supabase.from("pgc_sections").select("extra").limit(1);
+    state.hasExtra = !probe.error;
+  }
 }
 
 async function loadPage(slug) {
@@ -366,6 +375,13 @@ async function renderPageEditor(slug) {
 
   state.page = loaded.page; state.sections = loaded.sections;
   const page = state.page;
+  try {
+    const live = await readLivePage(def);
+    state.sections.forEach((s) => {
+      const base = s.section_key && live.sections.find((x) => x.section_key === s.section_key);
+      if (base) fillFromBaseline(s, base, schemaFor(slug, s));
+    });
+  } catch { /* the editor still works on the database copy alone */ }
   const liveLocked = page.published && !access.canPublish;   // ARI rule: contributors cannot touch live rows
 
   const head = el("div", { class: "p-head" },
@@ -410,61 +426,150 @@ function blankSection(kind) {
     band: "default", sort_order: (state.sections.length + 1) * 10, published: false, review_state: "draft", _new: true };
 }
 
+/* ------------------------------------------------- section editor (schema) */
+/* Every section is drawn from its entry in editor-schema.js, so each field is
+   named after what it changes on the page and only the fields the design has
+   are shown. */
+const normNl = (v) => String(v == null ? "" : v).replace(/\r\n?/g, "\n");
+const splitParas = (v) => normNl(v).split(/\n{2,}/);
+function getVal(obj, f) {
+  if (f.key.startsWith("extra.")) return (obj.extra || {})[f.key.slice(6)];
+  if (f.para != null) { const p = splitParas(obj[f.key]); return p[f.para] || ""; }
+  return obj[f.key];
+}
+function setVal(obj, f, v) {
+  if (f.key.startsWith("extra.")) { obj.extra = Object.assign({}, obj.extra || {}, { [f.key.slice(6)]: v }); return; }
+  if (f.para != null) {
+    const p = splitParas(obj[f.key]);
+    while (p.length <= f.para) p.push("");
+    p[f.para] = String(v || "").replace(/\n{2,}/g, "\n").trim();
+    obj[f.key] = p.map((x) => x.trim()).filter(Boolean).join("\n\n");
+    return;
+  }
+  obj[f.key] = v;
+}
+
+/* Fill gaps from the page's own markup: a value the database does not hold
+   yet is still on the live site (the markup stays when a value is empty). */
+function fillFromBaseline(row, base, schema) {
+  if (!base) return;
+  (schema.fields || []).forEach((f) => {
+    if (!f.key || f.type === "band") return;
+    // The mint part is written together with the white part, so an empty one
+    // really is empty on the site whenever the white part is set.
+    if (f.key === "heading_accent" && row.heading) return;
+    const cur = getVal(row, f), b = getVal(base, f);
+    if ((cur == null || cur === "" || (Array.isArray(cur) && !cur.length)) && b != null && b !== "") setVal(row, f, b);
+  });
+  if (schema.items && Array.isArray(base.items)) {
+    if (!row.items.length && base.items.length) row.items = JSON.parse(JSON.stringify(base.items));
+    row.items.forEach((it, j) => {
+      const bi = base.items[j]; if (!bi) return;
+      schema.items.fields.forEach((f) => {
+        const cur = getVal(it, f), b = getVal(bi, f);
+        if ((cur == null || cur === "" || (Array.isArray(cur) && !cur.length)) && b != null && b !== "") setVal(it, f, b);
+      });
+    });
+  }
+}
+
 function sectionCard(s, i, locked, redraw) {
-  const title = s.heading || s.eyebrow || (s.section_key ? s.section_key : KINDS[s.kind] || "Section");
+  const schema = schemaFor(state.page.slug, s);
+  const preview = s.heading || s.eyebrow || "";
+  const title = schema.name + (preview && preview !== schema.name ? " — " + preview : "");
   const tools = el("div", { class: "p-card-tools" },
     el("button", { type: "button", class: "p-icon-btn", "aria-label": "Move section up", disabled: locked || i === 0, onclick: () => { move(state.sections, i, -1); markDirty(); redraw(); } }, "↑"),
     el("button", { type: "button", class: "p-icon-btn", "aria-label": "Move section down", disabled: locked || i === state.sections.length - 1, onclick: () => { move(state.sections, i, 1); markDirty(); redraw(); } }, "↓"),
     (state.access.canPublish || s._new) && !locked
       ? el("button", { type: "button", class: "p-icon-btn", "aria-label": "Remove section", onclick: async () => {
-          if (!confirm("Remove the section “" + title + "”?")) return;
+          if (!confirm("Remove the section “" + title + "”? It disappears from the public page when you save.")) return;
           if (s.id) { const { error } = await supabase.from("pgc_sections").delete().eq("id", s.id); if (error) { notice("Could not remove it: " + errText(error), true); return; } }
           state.sections.splice(i, 1); markDirty(); redraw(); schedulePreview();
         } }, "Remove")
       : null);
-  const fields = [
-    field("Eyebrow", "input", s.eyebrow || "", (v) => (s.eyebrow = v), { readonly: locked, hint: "The small // label // above the headline." }),
-    field("Band", "select", s.band || "default", (v) => (s.band = v), { readonly: locked, options: [["default", "Teal (default)"], ["alt", "Grey band"]] }),
-    field("Headline", "input", s.heading || "", (v) => (s.heading = v), { wide: true, readonly: locked }),
-    field("Headline — mint clause", "input", s.heading_accent || "", (v) => (s.heading_accent = v), { wide: true, readonly: locked, hint: "Starts a new line in mint." }),
-    s.kind === "hero" ? field("Kicker", "input", s.kicker || "", (v) => (s.kicker = v), { wide: true, readonly: locked }) : null,
-    field(s.kind === "statement" ? "Statement" : "Lead paragraph(s)", "textarea", s.lead || "", (v) => (s.lead = v), { wide: true, readonly: locked, hint: "Leave a blank line between paragraphs." }),
-    s.kind === "statement" || s.note ? field("Attribution / note", "input", s.note || "", (v) => (s.note = v), { wide: true, readonly: locked }) : null,
-    (s.bullets && s.bullets.length) || (!s.items.length && s.kind === "rich" && !s.section_key)
-      ? field("Bullets", "textarea", bulletsToText(s.bullets), (v) => (s.bullets = textToBullets(v, s.bullets.some((b) => typeof b === "object"))), { wide: true, readonly: locked, hint: "One per line. For name + detail write “Name — Detail”." })
-      : null,
-    itemsEditor(s, locked),
-  ];
-  const sub = [KINDS[s.kind] || s.kind, s.section_key ? "key: " + s.section_key : "added in the editor"].join(" · ");
-  return card(title, sub, fields, { tools, state: s, open: !!s._new });
+
+  const body = [el("p", { class: "p-where", text: schema.where })];
+  (schema.fields || []).forEach((f) => body.push(schemaField(s, f, locked)));
+  if (schema.items) body.push(itemsEditor(s, schema.items, locked));
+  if (schema.people) body.push(el("div", { class: "p-callout" },
+    el("p", null, "The people in this section — photos, names, roles, bios and links — are edited on the Team screen."),
+    el("button", { type: "button", class: "btn btn-ghost", onclick: () => (location.hash = "#/team") }, "Edit people")));
+
+  const sub = "Section " + (i + 1) + " of " + state.sections.length + (s.section_key ? "" : " · added in the editor");
+  return card(title, sub, body, { tools, state: s, open: !!s._new, focusKey: s.section_key || null });
 }
 
-function itemsEditor(s, locked) {
-  const supports = s.items.length || ["cards", "ticks", "cta", "hero"].includes(s.kind);
-  if (!supports) return null;
-  const isLink = (it) => it && "label" in it && !("title" in it);
-  const wrap = el("div", { class: "p-items" });
+function schemaField(obj, f, locked, compact) {
+  if (f.group) return el("div", { class: "p-group" }, el("h3", { text: f.group }), f.hint ? el("p", { class: "p-hint", text: f.hint }) : null);
+  const mk = compact ? ifield : (label, type, value, onChange, lk, opts) => field(label, type, value, onChange, Object.assign({ readonly: lk }, opts));
+  const val = getVal(obj, f);
+  const wideText = ["textarea", "paras", "list"].includes(f.type);
+  if (f.type === "band")
+    return field(f.label, "select", obj.band || "default", (v) => (obj.band = v), { readonly: locked, options: [["default", "Dark teal"], ["alt", "Grey band"]], hint: "Alternating grey bands separate neighbouring sections." });
+  if (f.type === "pairs") return pairsField(obj, f, locked);
+  if (f.type === "list") {
+    const structured = Array.isArray(val) && val.some((b) => typeof b === "object");
+    return mk(f.label, "textarea", bulletsToText(val), (v) => setVal(obj, f, textToBullets(v, structured)), locked, { wide: true, hint: f.hint });
+  }
+  if (f.key.startsWith("extra.") && !state.hasExtra)
+    return mk(f.label, f.type === "textarea" ? "textarea" : "input", normNl(val), () => {}, true,
+      { wide: true, hint: "Not editable yet: the database needs the one-time “extra” column update (see the deploy notes)." });
+  const type = f.type === "textarea" || f.type === "paras" ? "textarea" : "input";
+  return mk(f.label, type, normNl(val), (v) => setVal(obj, f, v), locked,
+    { wide: compact ? wideText : f.key !== "eyebrow", hint: f.hint, placeholder: f.type === "link" ? "/contact/ or https://…" : null });
+}
+
+/* Rows of two inputs, e.g. "EW & spectrum" + "Electromagnetic warfare, sensing". */
+function pairsField(obj, f, locked) {
+  const wrap = el("div", { class: "p-item-field p-item-field--wide" });
+  const rows = () => (Array.isArray(obj[f.key]) ? obj[f.key] : (obj[f.key] = []));
   const draw = () => {
     wrap.innerHTML = "";
-    wrap.append(el("div", { class: "p-items-h" }, el("h3", { text: s.kind === "cta" || s.kind === "hero" || (s.items[0] && isLink(s.items[0])) ? "Buttons" : "Items" }),
-      locked ? null : el("button", { type: "button", class: "p-icon-btn", onclick: () => { s.items.push(s.items[0] ? Object.fromEntries(Object.keys(s.items[0]).map((k) => [k, Array.isArray(s.items[0][k]) ? [] : ""])) : { title: "", text: "" }); markDirty(); draw(); } }, "Add item")));
+    wrap.append(el("label", { text: f.label }));
+    const list = el("div", { class: "p-pairs" });
+    rows().forEach((r, j) => {
+      if (typeof r === "string") rows()[j] = r = { name: r, detail: "" };
+      const a = el("input", { type: "text", readonly: locked, "aria-label": f.label + " " + (j + 1) + " — " + f.columns[0], placeholder: f.columns[0] }); a.value = r.name || "";
+      const b = el("input", { type: "text", readonly: locked, "aria-label": f.label + " " + (j + 1) + " — " + f.columns[1], placeholder: f.columns[1] }); b.value = r.detail || "";
+      a.addEventListener("input", () => { r.name = a.value; markDirty(); });
+      b.addEventListener("input", () => { r.detail = b.value; markDirty(); });
+      list.append(el("div", { class: "p-pair" }, a, b,
+        el("button", { type: "button", class: "p-icon-btn", "aria-label": "Move up", disabled: locked || j === 0, onclick: () => { move(rows(), j, -1); markDirty(); draw(); } }, "↑"),
+        locked ? null : el("button", { type: "button", class: "p-icon-btn", "aria-label": "Remove row", onclick: () => { rows().splice(j, 1); markDirty(); draw(); } }, "×")));
+    });
+    wrap.append(list);
+    if (!locked) wrap.append(el("button", { type: "button", class: "p-icon-btn", onclick: () => { rows().push({ name: "", detail: "" }); markDirty(); draw(); } }, "Add row"));
+    if (f.hint) wrap.append(el("p", { class: "p-hint", text: f.hint }));
+  };
+  draw();
+  return wrap;
+}
+
+function itemsEditor(s, spec, locked) {
+  const wrap = el("div", { class: "p-items" });
+  const blank = () => Object.fromEntries(spec.fields.filter((f) => !f.group).map((f) => [f.key, f.type === "list" || f.type === "pairs" ? [] : ""]));
+  const draw = () => {
+    wrap.innerHTML = "";
+    const canAdd = !locked && s.items.length < (spec.max || 99);
+    wrap.append(el("div", { class: "p-items-h" },
+      el("h3", { text: spec.label + " (" + s.items.length + (spec.max ? " of " + spec.max : "") + ")" }),
+      canAdd ? el("button", { type: "button", class: "p-icon-btn", onclick: () => {
+        // Copy the shape of an existing block so the site renders it the same way.
+        const like = s.items[s.items.length - 1];
+        const fresh = like ? Object.fromEntries(Object.keys(like).map((k) => [k, Array.isArray(like[k]) ? [] : typeof like[k] === "object" && like[k] ? {} : ""])) : blank();
+        if (like && like.href != null) fresh.href = "";
+        s.items.push(fresh); markDirty(); draw();
+      } }, "Add " + spec.noun.toLowerCase()) : null));
+    if (spec.hint) wrap.append(el("p", { class: "p-hint", text: spec.hint }));
     s.items.forEach((it, j) => {
       const box = el("div", { class: "p-item" });
-      box.append(el("div", { class: "p-item-h" }, el("span", { text: "Item " + (j + 1) }),
-        el("button", { type: "button", class: "p-icon-btn", "aria-label": "Move item up", disabled: locked || j === 0, onclick: () => { move(s.items, j, -1); markDirty(); draw(); } }, "↑"),
-        el("button", { type: "button", class: "p-icon-btn", "aria-label": "Move item down", disabled: locked || j === s.items.length - 1, onclick: () => { move(s.items, j, 1); markDirty(); draw(); } }, "↓"),
-        locked ? null : el("button", { type: "button", class: "p-icon-btn", "aria-label": "Remove item", onclick: () => { s.items.splice(j, 1); markDirty(); draw(); } }, "Remove")));
-      if (isLink(it)) {
-        box.append(ifield("Button text", "input", it.label || "", (v) => (it.label = v), locked), ifield("Link", "input", it.href || "", (v) => (it.href = v), locked, { placeholder: "/contact/ or https://…" }));
-      } else {
-        if ("eyebrow" in it) box.append(ifield("Eyebrow", "input", it.eyebrow || "", (v) => (it.eyebrow = v), locked));
-        box.append(ifield("Title", "input", it.title || "", (v) => (it.title = v), locked));
-        if ("subtitle" in it) box.append(ifield("Subtitle", "input", it.subtitle || "", (v) => (it.subtitle = v), locked));
-        box.append(ifield("Text", "textarea", it.text || "", (v) => (it.text = v), locked, { wide: true }));
-        if ("bullets" in it || s.kind === "ticks") box.append(ifield("Bullets", "textarea", bulletsToText(it.bullets), (v) => (it.bullets = textToBullets(v, (it.bullets || []).some((b) => typeof b === "object"))), locked, { wide: true, hint: "One per line." }));
-        if ("label" in it || "href" in it) box.append(ifield("Button text", "input", it.label || "", (v) => (it.label = v), locked), ifield("Button link", "input", it.href || "", (v) => (it.href = v), locked));
-        if ("image" in it) box.append(imageField("Image", it.image || "", it.image_alt || "", (url, alt) => { it.image = url; it.image_alt = alt; }, locked));
-      }
+      const canRemove = !locked && s.items.length > (spec.min || 0);
+      box.append(el("div", { class: "p-item-h" }, el("span", { text: spec.noun + " " + (j + 1) + (it.title || it.label ? " — " + (it.title || it.label) : "") }),
+        el("button", { type: "button", class: "p-icon-btn", "aria-label": "Move " + spec.noun + " up", disabled: locked || j === 0, onclick: () => { move(s.items, j, -1); markDirty(); draw(); } }, "↑"),
+        el("button", { type: "button", class: "p-icon-btn", "aria-label": "Move " + spec.noun + " down", disabled: locked || j === s.items.length - 1, onclick: () => { move(s.items, j, 1); markDirty(); draw(); } }, "↓"),
+        canRemove ? el("button", { type: "button", class: "p-icon-btn", "aria-label": "Remove " + spec.noun, onclick: () => { if (!confirm("Remove " + spec.noun.toLowerCase() + " " + (j + 1) + "?")) return; s.items.splice(j, 1); markDirty(); draw(); } }, "Remove") : null));
+      spec.fields.forEach((f) => box.append(schemaField(it, f, locked, true)));
+      if ("image" in it) box.append(imageField("Image", it.image || "", it.image_alt || "", (url, alt) => { it.image = url; it.image_alt = alt; }, locked));
       wrap.append(box);
     });
   };
@@ -541,12 +646,21 @@ async function renderSettingsEditor() {
   state.settings = SETTING_DEFS.map((d) => Object.assign({ id: null, key: d.key, label: d.label, value: "", published: false, review_state: "draft", _new: true }, (data || []).find((r) => r.key === d.key) || {}));
   (data || []).filter((r) => !SETTING_DEFS.some((d) => d.key === r.key)).forEach((r) => state.settings.push(r));
   state.page = null; state.sections = [];
+  // What the site shows when a setting has no published value: read it off the contact page.
+  const baseline = {};
+  try {
+    const html = await (await fetch("/contact/", { cache: "no-store" })).text();
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("[data-pgc-setting]").forEach((n) => { if (!baseline[n.dataset.pgcSetting]) baseline[n.dataset.pgcSetting] = Array.from(n.childNodes).filter((c) => c.nodeType === 3).map((c) => c.textContent).join("").replace(/\s+/g, " ").trim() || n.textContent.trim(); });
+  } catch { /* fine: fields just start empty */ }
   view.append(el("div", { class: "p-head" }, el("div", null, el("h1", { text: "Site settings" }), el("p", { class: "p-meta", text: "Footer and contact details shown on every page." })), actionBar("settings")));
   const editor = el("div", { class: "p-editor" });
   view.append(el("div", { class: "p-layout" }, editor, previewPanel("/")));
   state.settings.forEach((s) => {
     const locked = s.published && !access.canPublish;
-    editor.append(card(s.label, s.key, [field("Value", s.key === "footer_disclaimer" ? "textarea" : "input", s.value || "", (v) => (s.value = v), { wide: true, readonly: locked })], { state: s, open: true }));
+    const def = SETTING_DEFS.find((d) => d.key === s.key) || {};
+    if (!s.value && baseline[s.key]) s.value = baseline[s.key];
+    editor.append(card(def.label || s.label, def.hint || s.key, [field("Value", s.key === "footer_disclaimer" ? "textarea" : "input", s.value || "", (v) => (s.value = v), { wide: true, readonly: locked })], { state: s, open: true }));
   });
   schedulePreview();
 }
@@ -625,6 +739,7 @@ async function saveAll(mode, change) {
       return out;
     };
     let saved = 0, refused = 0;
+    const rows = () => (mode === "team" ? state.team : mode === "settings" ? state.settings : [state.page].concat(state.sections));
     if (mode === "team") {
       for (const [i, p] of state.team.entries()) { p.sort_order = (i + 1) * 10; const r = await upsert("pgc_team", stamp(p), ["name", "role", "bio", "photo_url", "photo_alt", "linkedin_url", "email", "team_group", "sort_order", "published", "review_state"]); if (r.ok) { Object.assign(p, r.row, { _new: false }); saved++; } else refused++; }
     } else if (mode === "settings") {
@@ -634,20 +749,23 @@ async function saveAll(mode, change) {
       if (pr.ok) { Object.assign(state.page, pr.row); saved++; } else refused++;
       for (const [i, s] of state.sections.entries()) {
         s.sort_order = (i + 1) * 10; s.page_id = state.page.id;
-        const r = await upsert("pgc_sections", stamp(s), ["page_id", "section_key", "kind", "eyebrow", "heading", "heading_accent", "kicker", "lead", "note", "bullets", "items", "image_url", "image_alt", "band", "sort_order", "published", "review_state"]);
+        const r = await upsert("pgc_sections", stamp(s), SECTION_COLS());
         if (r.ok) { Object.assign(s, r.row, { _new: false }); saved++; } else { refused++; if (r.error) notice(r.error, true); }
       }
     }
     state.dirty = false;
     await loadPages(); renderNav();
     const verb = change.published === true ? "Published" : change.published === false ? "Unpublished" : change.review_state === "in_review" ? "Submitted for review" : change.review_state === "changes_requested" ? "Changes requested" : "Saved";
-    if (refused) notice(verb + " " + saved + " of " + (saved + refused) + " items. The rest were refused — you may not have permission for live content.", true);
-    else notice(verb + " (" + saved + " items).");
+    const done = refused
+      ? [verb + " " + saved + " of " + (saved + refused) + " items. The rest were refused — you may not have permission for live content.", true]
+      : [verb + " (" + saved + " items)" + (change.published === true || (change.published == null && rows().some((r) => r.published)) ? " — the public site now shows this version." : "."), false];
+    notice(...done);
     // Redraw so pills and buttons reflect the new state.
     const hash = location.hash; state.route = null;
     $("#pView").innerHTML = "";
     if (mode === "team") await renderTeamEditor(); else if (mode === "settings") await renderSettingsEditor(); else await renderPageEditor(parseHash().slug);
     state.route = Object.assign(parseHash(), { hash });
+    notice(...done);   // the redraw above replaces the notice; keep the save result visible
   } catch (e) {
     notice("Save failed: " + errText(e), true);
   } finally { state.saving = false; }
@@ -679,7 +797,7 @@ async function setupPage(def) {
     const pr = await upsert("pgc_pages", page, ["slug", "path", "title", "nav_label", "meta_description", "sort_order", "published", "review_state"]);
     if (!pr.ok) throw new Error(pr.error);
     for (const s of live.sections) {
-      const r = await upsert("pgc_sections", Object.assign(s, { page_id: pr.row.id, published: false, review_state: "draft" }), ["page_id", "section_key", "kind", "eyebrow", "heading", "heading_accent", "kicker", "lead", "note", "bullets", "items", "band", "sort_order", "published", "review_state"]);
+      const r = await upsert("pgc_sections", Object.assign(s, { page_id: pr.row.id, published: false, review_state: "draft" }), SECTION_COLS());
       if (!r.ok) throw new Error(r.error);
     }
     await loadPages(); renderNav();
@@ -732,7 +850,14 @@ function card(title, sub, fields, opts) {
     onclick: () => { body.hidden = !body.hidden; toggle.setAttribute("aria-expanded", String(!body.hidden)); } });
   const head = el("div", { class: "p-card-h" }, el("h2", null, toggle), sub ? el("span", { class: "p-sub", text: sub }) : null, opts.state ? pill(opts.state) : null);
   if (opts.tools) head.append(opts.tools);
-  return el("div", { class: "p-card" }, head, body);
+  const box = el("div", { class: "p-card" }, head, body);
+  if (opts.focusKey) {
+    // Point the preview at the section being edited.
+    const show = () => { if (previewFrame && previewReady) previewFrame.contentWindow.postMessage({ type: "pgc:focus", key: opts.focusKey }, location.origin); };
+    toggle.addEventListener("click", () => { if (!body.hidden) show(); });
+    box.addEventListener("focusin", show);
+  }
+  return box;
 }
 
 function field(label, type, value, onChange, opts) {

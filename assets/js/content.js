@@ -14,6 +14,8 @@
      <section data-pgc-section="why">       a managed block
      <div class="grid" data-pgc-items>      the block's repeating items
      <div class="grid" data-pgc-team="…">   people from pgc_team
+     <p data-pgc-extra="lens_title">         a one-off piece of a section, stored
+                                            in pgc_sections.extra (jsonb)
    Everything else is found by the selectors in FIELDS / ITEM_FIELDS below, so
    the same module can read a section out of the DOM (used to seed the database
    and to show a "current page" baseline in the portal) and write one back in.
@@ -98,6 +100,38 @@ function writeBtn(a, item) {
   Array.from(a.childNodes).forEach((n) => { if (n.nodeType === 3) n.remove(); });
   const node = document.createTextNode((item.label || "") + (arrow ? " " : ""));
   a.insertBefore(node, arrow || null);
+}
+
+/* The hero values strip ("Conviction  /  Craft  /  Endurance") is stored as
+   "Conviction / Craft / Endurance" and written back with its wide spacing. */
+function writeKicker(el, value) {
+  const v = String(value || "");
+  el.textContent = el.classList.contains("values-strip") ? v.split(/\s*\/\s*/).join("  /  ") : v;
+}
+
+/* The closing attribution: "Name · Title", the name in mint. */
+function writeNote(el, value) {
+  const v = String(value || "");
+  const nameEl = el.querySelector(".name");
+  if (!nameEl) { el.textContent = v; return; }
+  const i = v.indexOf("·");
+  const name = (i < 0 ? v : v.slice(0, i)).trim();
+  const rest = i < 0 ? "" : v.slice(i + 1).trim();
+  el.innerHTML = '<span class="name">' + esc(name) + "</span>" + (rest ? " &nbsp;&middot;&nbsp; " + esc(rest) : "");
+}
+
+/* One-off pieces of a section that have no column of their own. */
+function readExtras(el) {
+  const out = {};
+  own(el, "[data-pgc-extra]").forEach((n) => { out[n.dataset.pgcExtra] = readMotif(n); });
+  return out;
+}
+function writeExtras(el, extra) {
+  if (!extra || typeof extra !== "object") return;
+  own(el, "[data-pgc-extra]").forEach((n) => {
+    const v = extra[n.dataset.pgcExtra];
+    if (v != null && v !== "") writeMotif(n, v);
+  });
 }
 
 function readBullet(li) {
@@ -185,6 +219,8 @@ export function readSection(el) {
 
   const host = el.querySelector("[data-pgc-items]");
   if (host) row.items = itemNodes(host).map(readItem);
+  const extra = readExtras(el);
+  if (Object.keys(extra).length) row.extra = extra;
   return row;
 }
 
@@ -240,7 +276,7 @@ export function patchSection(el, row) {
   const h = own(el, FIELDS.heading)[0];
   if (h && row.heading != null) writeHeading(h, row.heading, row.heading_accent);
   const kicker = own(el, FIELDS.kicker)[0];
-  if (kicker && row.kicker != null) kicker.textContent = row.kicker;
+  if (kicker && row.kicker != null) writeKicker(kicker, row.kicker);
   if (row.lead != null) {
     const nodes = own(el, FIELDS.lead);
     const wanted = paras(row.lead);
@@ -248,7 +284,8 @@ export function patchSection(el, row) {
       .forEach((n, i) => { n.textContent = wanted[i] || ""; });
   }
   const note = own(el, FIELDS.note)[0];
-  if (note && row.note != null) note.textContent = row.note;
+  if (note && row.note != null) writeNote(note, row.note);
+  writeExtras(el, row.extra);
 
   const bulletHost = el.querySelector("[data-pgc-bullets]");
   if (bulletHost && Array.isArray(row.bullets) && row.bullets.length)
@@ -424,7 +461,7 @@ export function applySettings(doc, settings) {
     if (el.tagName === "A" && el.dataset.pgcSetting === "contact_email") {
       el.setAttribute("href", "mailto:" + v);
       el.textContent = v;
-    } else el.textContent = v;
+    } else writeMotif(el, v);
   });
 }
 
@@ -440,12 +477,23 @@ async function hydrate() {
     // A preview never fades in: show everything at once.
     document.querySelectorAll("[data-reveal]").forEach((el) => el.classList.add("is-visible"));
     window.addEventListener("message", (e) => {
-      if (e.origin !== location.origin || !e.data || e.data.type !== "pgc:preview") return;
+      if (e.origin !== location.origin || !e.data) return;
+      if (e.data.type === "pgc:focus") {
+        // The editor opened a section: bring it into view and outline it briefly.
+        const sec = main.querySelector('[data-pgc-section="' + CSS.escape(String(e.data.key || "")) + '"]');
+        if (sec) {
+          sec.scrollIntoView({ behavior: "smooth", block: "start" });
+          sec.style.outline = "2px dashed #3CDBC0"; sec.style.outlineOffset = "-6px";
+          clearTimeout(sec.__pgcFocus); sec.__pgcFocus = setTimeout(() => { sec.style.outline = ""; sec.style.outlineOffset = ""; }, 1600);
+        }
+        return;
+      }
+      if (e.data.type !== "pgc:preview") return;
       try {
         if (Array.isArray(e.data.sections)) applyPage(main, e.data.sections);
         if (Array.isArray(e.data.team)) applyTeam(main, e.data.team);
         if (Array.isArray(e.data.settings)) applySettings(document, e.data.settings);
-      } catch (err) { /* a bad draft must never break the preview frame */ }
+      } catch (err) { console.warn("pgc preview: a draft could not be drawn", err); /* a bad draft must never break the preview frame */ }
       document.querySelectorAll("[data-reveal]").forEach((el) => el.classList.add("is-visible"));
       window.parent.postMessage({ type: "pgc:preview-painted" }, location.origin);
     });

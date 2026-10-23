@@ -99,6 +99,10 @@ rows directly (the history keeps every version) or unpublishes first.
    `node tools/dump_content.mjs` after editing the HTML.
 4. `supabase/migrations/20261024_pgc_newsletter.sql` — email campaigns tables + the
    `pgc_newsletter` module. **Not applied yet.**
+5. `supabase/migrations/20261024_pgc_sections_extra.sql` — `pgc_sections.extra` (one-off
+   pieces such as the Thesis lens banner) plus the current values of the newly editable
+   bits and the `hq_location` setting. Safe to re-run. **Not applied yet** — see
+   `EDITOR-UPDATE.md`; the editor shows those fields read-only until it has run.
 
 Then: Supabase → Authentication → URL configuration: add `https://pgc.capital`
 and `https://pgc.capital/portal/**` as redirect URLs (magic links land

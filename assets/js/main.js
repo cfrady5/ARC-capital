@@ -66,10 +66,14 @@
       conversation: "You’re scheduling an introductory conversation with our capital formation team.",
       materials: "You’re requesting investor materials — we’ll follow up by email.",
       submit: "You’re submitting a company for review by our investment team.",
-      partner: "You’re starting a partnership conversation with ARC.",
+      partner: "You’re starting a partnership conversation with Proving Ground Capital (PGC).",
       advisory: "You’re asking about advisory services — technology roadmaps, commercialization pathways, and federal contracting support."
     };
-    if (messages[intent]) { helper.textContent = messages[intent]; }
+    /* content.js may write the editor's default copy in after this runs, so
+       put the contextual message back once published content has loaded. */
+    var applyHelper = function () { if (messages[intent]) { helper.textContent = messages[intent]; } };
+    applyHelper();
+    document.addEventListener("pgc:content-loaded", applyHelper);
   }
 
   /* ---------- Forms: honeypot + unconfigured-backend guard ---------- */

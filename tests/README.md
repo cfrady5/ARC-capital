@@ -124,6 +124,7 @@ psql -v ON_ERROR_STOP=1 -d pgc_test -f tests/db/local_schema.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_site_content.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_media_bucket.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261024_pgc_newsletter.sql
+psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261024_pgc_sections_extra.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f tests/db/rls_tests.sql    # last line: failures | total
 # optional: the seed applies cleanly and is idempotent
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_seed_content.sql

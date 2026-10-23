@@ -21,7 +21,7 @@ const seed = {
   pgc_sections: [
     // Home: hero + why (reordered: why first), values removed (no row), a new published CTA, and a draft that must not show.
     { id: "s-why", page_id: "pg-home", section_key: "why", kind: "rich", eyebrow: "Why PGC, from the database", heading: "Published headline", heading_accent: "mint clause.", lead: "First lead paragraph.\n\nSecond lead paragraph.", items: [{ eyebrow: "01", title: "Card A", text: "Text A." }, { eyebrow: "02", title: "Card B", text: "Text B." }, { eyebrow: "03", title: "Card C", text: "Text C." }, { eyebrow: "04", title: "Card D", text: "Text D." }, { eyebrow: "05", title: "Card E (cloned)", text: "Text E." }], bullets: [], band: "alt", sort_order: 10, published: true, review_state: "draft" },
-    { id: "s-hero", page_id: "pg-home", section_key: "hero", kind: "hero", heading: "Hero from the database.", lead: "Hero lead from the database.", items: [{ label: "Only button", href: "/contact/?intent=db" }], bullets: [], band: "default", sort_order: 20, published: true, review_state: "draft" },
+    { id: "s-hero", page_id: "pg-home", section_key: "hero", kind: "hero", heading: "Hero from the database.", kicker: "Rigor / Reach / Resolve", lead: "Hero lead from the database.", items: [{ label: "Only button", href: "/contact/?intent=db" }], bullets: [], band: "default", sort_order: 20, published: true, review_state: "draft" },
     { id: "s-new", page_id: "pg-home", kind: "cta", eyebrow: "New Section", heading: "Added in the portal", heading_accent: "and published.", lead: "A section with no markup in the repository.", items: [{ label: "Go", href: "/thesis/" }], bullets: [], band: "default", sort_order: 30, published: true, review_state: "draft" },
     { id: "s-draft", page_id: "pg-home", kind: "rich", eyebrow: "DRAFT ONLY", heading: "This draft must never render", items: [], bullets: [], band: "default", sort_order: 40, published: false, review_state: "in_review" },
     { id: "s-closing", page_id: "pg-home", section_key: "closing", kind: "statement", heading: "“A new quote.", heading_accent: "In mint.”", note: "Someone · Title", items: [{ label: "Partner", href: "/contact/" }], bullets: [], band: "default", sort_order: 50, published: true, review_state: "draft" },
@@ -41,6 +41,7 @@ const seed = {
     { id: "st-1", key: "footer_tagline", label: "Footer tagline", value: "Tagline from the database.", published: true, review_state: "draft" },
     { id: "st-2", key: "contact_email", label: "Contact email", value: "hello@provinggroundcapital.example", published: true, review_state: "draft" },
     { id: "st-3", key: "footer_disclaimer", label: "Footer disclosure", value: "DRAFT DISCLAIMER", published: false, review_state: "draft" },
+    { id: "st-4", key: "hq_location", label: "HQ line", value: "HQ / Test City, IN", published: true, review_state: "draft" },
   ],
 };
 
@@ -96,8 +97,12 @@ const bodyText = (p) => p.evaluate(() => document.body.textContent);
   await p.evaluate(() => document.querySelector("[data-pgc-rendered]").scrollIntoView());
   await p.waitForFunction(() => [...document.querySelectorAll("[data-pgc-rendered] [data-reveal]")].every((x) => x.classList.contains("is-visible")), null, { timeout: 4000 }).catch(() => {});
   check(r, "newSectionRevealedOnScroll", await p.evaluate(() => [...document.querySelectorAll("[data-pgc-rendered] [data-reveal]")].every((x) => x.classList.contains("is-visible"))));
-  const closing = await p.evaluate(() => { const s = document.querySelector('[data-pgc-section="closing"]'); return { st: s.querySelector(".statement").textContent, accent: s.querySelector(".statement .accent").textContent, note: s.querySelector(".attribution").textContent }; });
-  check(r, "statementKeepsAccent", /^“A new quote\./.test(closing.st) && closing.accent === "In mint.”" && closing.note === "Someone · Title", closing);
+  const closing = await p.evaluate(() => { const s = document.querySelector('[data-pgc-section="closing"]'); return { st: s.querySelector(".statement").textContent, accent: s.querySelector(".statement .accent").textContent, note: s.querySelector(".attribution").textContent.replace(/\s+/g, " "), name: (s.querySelector(".attribution .name") || {}).textContent }; });
+  check(r, "statementKeepsAccent", /^“A new quote\./.test(closing.st) && closing.accent === "In mint.”" && closing.note === "Someone · Title" && closing.name === "Someone", closing);
+  const strip = await p.evaluate(() => document.querySelector('[data-pgc-section="hero"] .values-strip').textContent);
+  check(r, "valuesStripKeepsSpacing", strip === "Rigor  /  Reach  /  Resolve", strip);
+  const hq = await p.evaluate(() => { const n = document.querySelector("footer [data-pgc-setting=hq_location]"); return { text: n.textContent.replace(/\s+/g, " ").trim(), decor: n.querySelectorAll("[aria-hidden]").length }; });
+  check(r, "hqSettingKeepsDecoration", hq.text === "< HQ / Test City, IN >" && hq.decor === 2, hq);
   const body = await bodyText(p);
   check(r, "draftNeverRenders", !/DRAFT ONLY|This draft must never render|DRAFT DISCLAIMER/.test(body));
   const foot = await p.evaluate(() => ({ tag: document.querySelector("[data-pgc-setting=footer_tagline]").textContent, mail: document.querySelector("[data-pgc-setting=contact_email]").getAttribute("href"), mailText: document.querySelector("[data-pgc-setting=contact_email]").textContent, disc: document.querySelector("[data-pgc-setting=footer_disclaimer]").textContent }));

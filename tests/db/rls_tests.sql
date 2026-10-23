@@ -88,6 +88,8 @@ insert into public.pgc_sections (id, page_id, section_key, kind, heading, items,
 insert into public.pgc_team (id, name, role, team_group, sort_order, published) values
   ('30000000-0000-0000-0000-000000000001', 'Live Person', 'CEO', 'principals', 10, true),
   ('30000000-0000-0000-0000-000000000002', 'Draft Person', 'Associate', 'bench', 10, false);
+-- 20261024_pgc_sections_extra.sql seeds a published hq_location row; this suite owns its own settings fixture.
+delete from public.pgc_settings;
 insert into public.pgc_settings (id, key, label, value, published) values
   ('40000000-0000-0000-0000-000000000001', 'footer_tagline', 'Footer tagline', 'Live tagline', true),
   ('40000000-0000-0000-0000-000000000002', 'contact_email', 'Contact email', 'draft@example.com', false);

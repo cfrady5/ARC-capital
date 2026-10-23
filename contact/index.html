@@ -49,9 +49,9 @@
 
 <section class="section" data-pgc-section="form">
   <div class="container">
-    <div class="contact-grid" data-pgc-items=".sidebar-card">
+    <div class="contact-grid">
       <div class="form-card" data-reveal>
-        <p class="form-note" data-contact-helper>Please fill out the required information below.</p>
+        <p class="form-note" data-contact-helper data-pgc="note">Please fill out the required information below.</p>
         <!-- TODO: replace YOUR_FORM_ID with a real form endpoint (see README) -->
         <form data-arc-form action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
           <p class="hp-field" aria-hidden="true">
@@ -97,7 +97,7 @@
           <p class="form-status" role="status" aria-live="polite"></p>
         </form>
       </div>
-      <aside class="sidebar-card" data-reveal>
+      <aside class="sidebar-card" data-reveal data-pgc-items="self">
         <p class="eyebrow"><span aria-hidden="true">&gt;&gt;&nbsp;</span>Data Loaded</p>
         <h3>What we look for</h3>
         <ul>
@@ -107,7 +107,7 @@
           <li>Teams that want a partner, not a tourist</li>
         </ul>
         <hr class="divider">
-        <p class="hq"><span aria-hidden="true">&lt;&nbsp;</span>HQ / Indianapolis, IN<span aria-hidden="true">&nbsp;&gt;</span></p>
+        <p class="hq" data-pgc-setting="hq_location"><span aria-hidden="true">&lt;&nbsp;</span>HQ / Indianapolis, IN<span aria-hidden="true">&nbsp;&gt;</span></p>
         <a class="email-large" href="mailto:innovations@theari.us" data-pgc-setting="contact_email">innovations@theari.us</a>
       </aside>
     </div>
@@ -122,7 +122,7 @@
         <p class="footer-tagline" data-pgc-setting="footer_tagline">Applied solutions for transformational ideas.</p>
         <div class="footer-meta">
           <p class="hq">An Applied Research Institute Company</p>
-          <p class="hq"><span aria-hidden="true">&lt;&nbsp;</span>HQ / Indianapolis, IN<span aria-hidden="true">&nbsp;&gt;</span></p>
+          <p class="hq" data-pgc-setting="hq_location"><span aria-hidden="true">&lt;&nbsp;</span>HQ / Indianapolis, IN<span aria-hidden="true">&nbsp;&gt;</span></p>
           <p><a href="mailto:innovations@theari.us" data-pgc-setting="contact_email">innovations@theari.us</a></p>
         </div>
       </div>

@@ -178,3 +178,15 @@ input[readonly], textarea[readonly], input:disabled, textarea:disabled, select:d
 @media (prefers-reduced-motion: no-preference) {
   .p-nav-item, .p-icon-btn, .btn { transition: background-color 0.15s, color 0.15s, border-color 0.15s; }
 }
+
+/* ---------- section editor (schema-driven) ---------- */
+/* full-width rows inside the card grid */
+.p-card-body > .p-where, .p-card-body > .p-group, .p-card-body > .p-callout { grid-column: 1 / -1; }
+.p-where { font-size: 0.88rem; color: var(--text-dim); margin: 0; padding: 10px 12px; border-left: 2px solid var(--mint); background: rgba(60, 219, 192, 0.06); border-radius: 0 6px 6px 0; }
+.p-group { margin: 10px 0 0; padding-top: 16px; border-top: 1px dashed var(--line); }
+.p-group h3 { font-size: 0.95rem; color: var(--mint); margin: 0 0 2px; }
+.p-callout { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 8px; }
+.p-callout p { margin: 0; color: var(--text-body); font-size: 0.92rem; flex: 1 1 260px; }
+.p-pairs { display: grid; gap: 8px; margin-bottom: 8px; }
+.p-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto auto; gap: 8px; align-items: center; }
+@media (max-width: 560px) { .p-pair { grid-template-columns: 1fr auto auto; } .p-pair input:nth-child(2) { grid-column: 1 / 2; } }
