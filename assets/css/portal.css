@@ -7,6 +7,11 @@
 .portal-body { background: var(--ink); min-height: 100vh; }
 .portal-body h1, .portal-body h2, .portal-body h3 { text-wrap: initial; }
 
+/* The script shows one screen at a time by toggling `hidden`. Several screens
+   set their own display (grid/flex), which would otherwise override the
+   browser's hidden rule and stack every screen down the page. */
+[hidden] { display: none !important; }
+
 :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; border-radius: 4px; }
 
 /* ---------- boot / sign-in ---------- */

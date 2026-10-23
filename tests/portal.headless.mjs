@@ -54,10 +54,15 @@ async function session(name, cfg) {
   await p.goto(BASE + "/portal/" + (cfg.hash || ""), { waitUntil: "networkidle" });
   return { ctx, p };
 }
-const visible = (p, sel) => p.evaluate((s) => { const e = document.querySelector(s); return !!e && !e.hidden && !e.closest("[hidden]"); }, sel);
+/* "Visible" means laid out and painted, not just lacking the hidden attribute:
+   a display rule on the element could otherwise override `hidden`. */
+const visible = (p, sel) => p.evaluate((s) => { const e = document.querySelector(s); return !!e && !e.hidden && !e.closest("[hidden]") && e.getClientRects().length > 0 && getComputedStyle(e).display !== "none"; }, sel);
 const text = (p, sel) => p.evaluate((s) => (document.querySelector(s) || {}).textContent || "", sel);
 const buttons = (p) => p.evaluate(() => [...document.querySelectorAll(".p-actions .btn")].map((b) => b.textContent.trim()));
-const internalMarkup = (p) => p.evaluate(() => { const app = document.getElementById("pApp"); return { appHidden: app.hidden, navItems: document.querySelectorAll("#pPageNav li").length, viewText: document.getElementById("pView").textContent.trim() }; });
+const internalMarkup = (p) => p.evaluate(() => { const app = document.getElementById("pApp"); return { appHidden: app.hidden, appHeight: app.offsetHeight, navItems: document.querySelectorAll("#pPageNav li").length, viewText: document.getElementById("pView").textContent.trim() }; });
+/* Exactly one of the four screens occupies the page. */
+const screens = (p) => p.evaluate(() => Object.fromEntries(["pBoot", "pSignin", "pDenied", "pApp"].map((id) => { const e = document.getElementById(id); return [id, e.offsetHeight > 0 ? Math.round(e.getBoundingClientRect().top) : null]; })));
+const onlyScreen = (s, id) => Object.entries(s).every(([k, top]) => (k === id ? top !== null && top <= 1 : top === null));
 async function openPage(p, slug) { await p.evaluate((s) => { location.hash = "#/page/" + s; }, slug); await p.waitForSelector(".p-actions", { timeout: 8000 }); await p.waitForTimeout(300); }
 async function expand(p, title) {
   await p.evaluate((t) => { const b = [...document.querySelectorAll(".p-toggle")].find((x) => x.textContent.trim() === t); if (b && b.getAttribute("aria-expanded") === "false") b.click(); }, title);
@@ -86,8 +91,10 @@ const noticeText = (p) => text(p, "#pNotice");
   const r = {}; results.signedOut = r;
   const { ctx, p } = await session("signedOut", { anon: true });
   check(r, "signinShown", await visible(p, "#pSignin"));
+  let scr = await screens(p);
+  check(r, "signinIsTheOnlyScreen", onlyScreen(scr, "pSignin"), scr);
   const m = await internalMarkup(p);
-  check(r, "nothingInternal", m.appHidden && m.navItems === 0 && m.viewText === "", m);
+  check(r, "nothingInternal", m.appHidden && m.appHeight === 0 && m.navItems === 0 && m.viewText === "", m);
   check(r, "noindex", await p.evaluate(() => (document.querySelector('meta[name="robots"]') || {}).content || ""), "noindex, nofollow, noarchive");
   check(r, "deniedHidden", !(await visible(p, "#pDenied")));
   // Validation
@@ -117,9 +124,11 @@ const noticeText = (p) => text(p, "#pNotice");
   await p.fill("#pEmail", "test@theari.us"); await p.fill("#pPassword", "correct horse"); await p.click("#pSigninBtn");
   await p.waitForSelector("#pDenied:not([hidden])", { timeout: 8000 });
   check(r, "deniedShown", true);
+  const scr = await screens(p);
+  check(r, "deniedIsTheOnlyScreen", onlyScreen(scr, "pDenied"), scr);
   check(r, "deniedCopy", /does not have the “Proving Ground Capital pages” permission/.test(await text(p, "#pDeniedMsg")), await text(p, "#pDeniedMsg"));
   const m = await internalMarkup(p);
-  check(r, "nothingInternal", m.appHidden && m.navItems === 0 && m.viewText === "", m);
+  check(r, "nothingInternal", m.appHidden && m.appHeight === 0 && m.navItems === 0 && m.viewText === "", m);
   check(r, "mentionsUsersAccess", /Users & Access/.test(await text(p, "#pDenied")));
   await p.click("#pDenied [data-signout]"); await p.waitForSelector("#pSignin:not([hidden])", { timeout: 8000 });
   check(r, "signOutReturnsToSignin", true);
@@ -147,12 +156,20 @@ const noticeText = (p) => text(p, "#pNotice");
   await p.waitForSelector("#pApp:not([hidden])", { timeout: 8000 });
   await p.waitForSelector(".p-actions", { timeout: 8000 });
   check(r, "levelBadge", (await text(p, "#pLevel")) === "Contributor");
+  const scr = await screens(p);
+  check(r, "editorIsTheOnlyScreen", onlyScreen(scr, "pApp"), scr);
+  // The page starts with the editor's top bar, not a sign-in card above it.
+  check(r, "editorStartsAtTop", await p.evaluate(() => Math.round(document.querySelector(".p-topbar").getBoundingClientRect().top) === 0 && document.getElementById("pSignin").offsetHeight === 0 && document.getElementById("pDenied").offsetHeight === 0));
+  // Collapsed section cards take no space; an expanded one does.
+  const collapsed = await p.evaluate(() => [...document.querySelectorAll(".p-sections .p-card-body")].map((b) => [b.hidden, b.offsetHeight]));
+  check(r, "collapsedCardsTakeNoSpace", collapsed.length > 0 && collapsed.every(([h, px]) => h ? px === 0 : px > 0), collapsed);
   const nav = await p.evaluate(() => [...document.querySelectorAll("#pPageNav .p-nav-item")].map((b) => b.textContent.trim()));
   check(r, "pageListShowsSixPages", nav.length === 6 && nav.some((t) => /Home.*Published/.test(t)) && nav.some((t) => /Investment Thesis.*Draft/.test(t)) && nav.filter((t) => /Not set up/.test(t)).length === 4, nav);
   // Draft page: can edit, submit, but no Publish
   let b = await buttons(p);
   check(r, "draftActions", b.includes("Save draft") && b.includes("Submit for review") && !b.includes("Publish") && !b.includes("Unpublish") && !b.includes("Request changes"), b);
   await expand(p, "Security and growth");
+  check(r, "expandedCardHasHeight", await p.evaluate(() => { const t = [...document.querySelectorAll(".p-toggle")].find((x) => x.textContent.trim() === "Security and growth"); return t.closest(".p-card").querySelector(".p-card-body").offsetHeight > 100; }));
   check(r, "editsDraftField", await setField(p, "Headline", "Security and growth, edited"));
   check(r, "editsItemField", await setField(p, "Title", "$9.9T"));
   // Add a section + reorder with keyboard-reachable buttons
