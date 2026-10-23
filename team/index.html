@@ -38,8 +38,8 @@
     </nav>
   </div>
 </header>
-<main id="main">
-<section class="hero-plain section">
+<main id="main" data-pgc-page="team">
+<section class="hero-plain section" data-pgc-section="hero" data-pgc-kind="hero">
   <div class="container">
     <p class="eyebrow"><span aria-hidden="true">//&nbsp;</span>Team<span aria-hidden="true">&nbsp;//</span></p>
     <h1 data-reveal>Built for <span class="accent">execution.</span></h1>
@@ -47,9 +47,9 @@
   </div>
 </section>
 
-<section class="section">
+<section class="section" data-pgc-section="principals">
   <div class="container">
-    <div class="grid grid-3">
+    <div class="grid grid-3" data-pgc-team="principals">
       <div class="card team-card" data-reveal>
         <img class="headshot headshot--photo" src="/assets/img/team-jeron-peoples.webp" alt="Jeron Peoples" width="720" height="900" loading="lazy">
         <h3 class="name"><span aria-hidden="true">//&nbsp;</span>Jeron Peoples<span aria-hidden="true">&nbsp;//</span></h3>
@@ -75,13 +75,13 @@
   </div>
 </section>
 
-<section class="section section--alt">
+<section class="section section--alt" data-pgc-section="bench">
   <div class="container">
     <div class="section-head" data-reveal>
       <p class="eyebrow"><span aria-hidden="true">//&nbsp;</span>Execution Bench<span aria-hidden="true">&nbsp;//</span></p>
       <h2>The team behind <span class="accent">the pipeline.</span></h2>
     </div>
-    <div class="grid grid-2">
+    <div class="grid grid-2" data-pgc-team="bench">
       <div class="card team-card" data-reveal>
         <img class="headshot headshot--photo" src="/assets/img/team-carter-wittendorf.webp" alt="Carter Wittendorf" width="720" height="900" loading="lazy">
         <h3 class="name"><span aria-hidden="true">//&nbsp;</span>Carter Wittendorf<span aria-hidden="true">&nbsp;//</span></h3>
@@ -105,11 +105,11 @@
     <div class="footer-grid">
       <div class="footer-brand">
         <img src="/assets/img/pgc-logo-mint.svg" alt="Proving Ground Capital (PGC)" width="200" height="131">
-        <p class="footer-tagline">Applied solutions for transformational ideas.</p>
+        <p class="footer-tagline" data-pgc-setting="footer_tagline">Applied solutions for transformational ideas.</p>
         <div class="footer-meta">
           <p class="hq">An Applied Research Institute Company</p>
           <p class="hq"><span aria-hidden="true">&lt;&nbsp;</span>HQ / Indianapolis, IN<span aria-hidden="true">&nbsp;&gt;</span></p>
-          <p><a href="mailto:innovations@theari.us">innovations@theari.us</a></p>
+          <p><a href="mailto:innovations@theari.us" data-pgc-setting="contact_email">innovations@theari.us</a></p>
         </div>
       </div>
       <div class="footer-form">
@@ -142,7 +142,7 @@
       </form>
     </div>
     </div>
-    <p class="footer-disclaimer">Proving Ground Capital (PGC) is the commercial arm of Applied Research Institute, Inc., operated at arm&rsquo;s length. This site is informational only and is not an offer to sell, or a solicitation of an offer to buy, any security.</p>
+    <p class="footer-disclaimer" data-pgc-setting="footer_disclaimer">Proving Ground Capital (PGC) is the commercial arm of Applied Research Institute, Inc., operated at arm&rsquo;s length. This site is informational only and is not an offer to sell, or a solicitation of an offer to buy, any security.</p>
     <div class="footer-legal">
       <p>&copy;2026 Proving Ground Capital (PGC). All rights reserved.</p>
       <p>Proving Ground Capital (PGC) <span aria-hidden="true">//</span> An Applied Research Institute Company</p>
@@ -151,5 +151,6 @@
   </div>
 </footer>
 <script src="/assets/js/main.js" defer></script>
+<script type="module" src="/assets/js/content.js"></script>
 </body>
 </html>

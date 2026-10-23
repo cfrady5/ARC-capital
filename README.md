@@ -31,6 +31,91 @@ footer are duplicated in each page — if you edit one, mirror the change across
 Links are root-relative (`/thesis/`), so the site must be served from a domain root
 (not a sub-path like `user.github.io/repo/`).
 
+| Also in the repo | What |
+|---|---|
+| `portal/` + `assets/js/portal.js` + `assets/css/portal.css` | Employee website editor (see below) |
+| `assets/js/supabase.js`, `assets/js/content.js` | Supabase client (publishable key) and the public-site content layer |
+| `supabase/migrations/` | The three `pgc_*` migrations — **not applied until you apply them** |
+| `tests/` | Playwright suites with a Supabase stub, SQL RLS tests (`tests/README.md`) |
+| `tools/dump_content.mjs` | Regenerates the seed migration from the served pages |
+| `docs/ARI-REPO-TASK.md` | The change to make in cfrady5/ARI so the permission can be granted |
+| `vercel.json` | `no-store` + `noindex` headers for `/portal/` |
+
+`tools/`, `tests/`, `supabase/` and `docs/` are excluded from the Vercel deployment
+(`.vercelignore`).
+
+## Editable content and the employee portal
+
+The HTML in this repository **is** the site and stays the fallback. Supabase (ARI's
+project `xpelcuegqtpvojnjetkt`) holds an editable copy of it; authorised ARI staff edit
+that copy at **`/portal/`**, and the public pages replace what they shipped with the
+published rows.
+
+### How the public pages read content (`assets/js/content.js`)
+
+- `<main data-pgc-page="home">` names the page; every managed block is a
+  `<section data-pgc-section="why">`; its repeating items sit in a container marked
+  `data-pgc-items` (cards, bridge nodes, buttons); the team grids are
+  `data-pgc-team="principals|bench"`; three footer values carry `data-pgc-setting`.
+- On load, the module asks for the page row (`published = true`), its published
+  sections, the published team and settings — with the anon key, so RLS alone makes
+  drafts unreachable — and **patches the existing markup in place**: eyebrow, white/mint
+  headline split, lead paragraphs, items (extra items are cloned from the designed one),
+  bullets, buttons, band colour and section order. A section that exists only in the
+  database is rendered from its `kind` (`rich`, `cards`, `ticks`, `statement`, `cta`).
+  A section with no published row is removed from a managed page.
+- If the page has no published rows, the request fails or times out (6 s), the page is
+  shown exactly as it is in this repository. Nothing unpublished can ever reach it.
+- `?pgc_preview=1` turns off the fetch and listens for draft rows from the portal
+  (same-origin `postMessage`) — that is the live preview.
+- Not editable from the portal (static by design): header/nav, the form markup, the
+  hero's values strip and halftone device, the thesis "lens" banner and arc, the
+  footer's legal lines other than the three settings.
+
+### Data model (`supabase/migrations/20261023_pgc_site_content.sql`)
+
+`pgc_pages` (one per page) → `pgc_sections` (ordered blocks: eyebrow, heading,
+heading_accent, kicker, lead, note, bullets, items JSON, band, kind, sort_order),
+`pgc_team` (people, grouped principals/bench), `pgc_settings` (key/value). Every table
+has `published` and `review_state` (`draft | in_review | changes_requested`).
+
+Permission is ARI's new `employee_access` module **`pgc`** — `contributor` edits drafts
+and submits for review, `publisher` publishes, unpublishes, deletes and undoes;
+administrators have it automatically. RLS: everyone reads published rows; `can_edit('pgc')`
+reads and edits drafts; `can_publish('pgc')` manages live rows. A trigger stops
+non-publishers setting `changes_requested` and resets `review_state` on publish. Every
+change is logged to ARI's shared `content_revisions`; `pgc_restore_revision(id)` puts a
+version back (publishers). Images go to the public `pgc-media` bucket (images only, 8 MB).
+
+As in ARI (§49.6), a contributor cannot edit a page that is live; a publisher edits live
+rows directly (the history keeps every version) or unpublishes first.
+
+### Applying the migrations (in this order, none applied yet)
+
+1. `supabase/migrations/20261023_pgc_site_content.sql` — tables, module, RLS, triggers, undo.
+2. `supabase/migrations/20261023_pgc_media_bucket.sql` — the `pgc-media` bucket + policies.
+3. `supabase/migrations/20261023_pgc_seed_content.sql` — optional: today's pages as
+   *published* rows (so applying it changes nothing for visitors). Without it, each page
+   in the portal offers **Start from the live page**, which creates the same rows as drafts.
+   Regenerate with `node tools/dump_content.mjs` after editing the HTML.
+
+Then: Supabase → Authentication → URL configuration: add `https://provinggroundcapital.vercel.app`
+and `https://provinggroundcapital.vercel.app/portal/**` as redirect URLs (magic links land
+on `/portal/`). Email confirmation stays on; the portal never creates accounts
+(`shouldCreateUser: false`). Grant people the permission in ARI's Users & Access once
+`docs/ARI-REPO-TASK.md` is done.
+
+### Portal (`/portal/`)
+
+Sign in with email + password or a magic link → `rpc("my_access")` → only the people
+with `pgc` (or administrators) see anything; signed-out, suspended and unknown accounts
+get a sign-in or "no access" card and no internal markup. Page list with state pills,
+an editor per page (page title/description, sections with text, items, images, up/down
+ordering, add/remove), Team and Site settings editors, **Save draft / Submit for review /
+Withdraw / Publish / Request changes / Unpublish**, a live preview iframe (desktop or
+phone width), and **Change history** with Undo. `vercel.json` sends `no-store` and
+`X-Robots-Tag: noindex` for `/portal/`.
+
 ### Contact routing
 
 Every CTA passes intent through the URL, e.g. `/contact/?type=lp&intent=materials` or

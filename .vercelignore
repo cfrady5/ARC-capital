@@ -1,1 +1,4 @@
 tools/
+tests/
+supabase/
+docs/

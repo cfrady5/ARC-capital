@@ -38,8 +38,8 @@
     </nav>
   </div>
 </header>
-<main id="main">
-<section class="hero-plain section">
+<main id="main" data-pgc-page="contact">
+<section class="hero-plain section" data-pgc-section="hero" data-pgc-kind="hero">
   <div class="container">
     <p class="eyebrow"><span aria-hidden="true">//&nbsp;</span>Contact<span aria-hidden="true">&nbsp;//</span></p>
     <h1 data-reveal>Schedule a <span class="accent">conversation.</span></h1>
@@ -47,9 +47,9 @@
   </div>
 </section>
 
-<section class="section">
+<section class="section" data-pgc-section="form">
   <div class="container">
-    <div class="contact-grid">
+    <div class="contact-grid" data-pgc-items=".sidebar-card">
       <div class="form-card" data-reveal>
         <p class="form-note" data-contact-helper>Please fill out the required information below.</p>
         <!-- TODO: replace YOUR_FORM_ID with a real form endpoint (see README) -->
@@ -108,7 +108,7 @@
         </ul>
         <hr class="divider">
         <p class="hq"><span aria-hidden="true">&lt;&nbsp;</span>HQ / Indianapolis, IN<span aria-hidden="true">&nbsp;&gt;</span></p>
-        <a class="email-large" href="mailto:innovations@theari.us">innovations@theari.us</a>
+        <a class="email-large" href="mailto:innovations@theari.us" data-pgc-setting="contact_email">innovations@theari.us</a>
       </aside>
     </div>
   </div>
@@ -119,16 +119,16 @@
     <div class="footer-grid" style="grid-template-columns: 1fr;">
       <div class="footer-brand">
         <img src="/assets/img/pgc-logo-mint.svg" alt="Proving Ground Capital (PGC)" width="200" height="131">
-        <p class="footer-tagline">Applied solutions for transformational ideas.</p>
+        <p class="footer-tagline" data-pgc-setting="footer_tagline">Applied solutions for transformational ideas.</p>
         <div class="footer-meta">
           <p class="hq">An Applied Research Institute Company</p>
           <p class="hq"><span aria-hidden="true">&lt;&nbsp;</span>HQ / Indianapolis, IN<span aria-hidden="true">&nbsp;&gt;</span></p>
-          <p><a href="mailto:innovations@theari.us">innovations@theari.us</a></p>
+          <p><a href="mailto:innovations@theari.us" data-pgc-setting="contact_email">innovations@theari.us</a></p>
         </div>
       </div>
       
     </div>
-    <p class="footer-disclaimer">Proving Ground Capital (PGC) is the commercial arm of Applied Research Institute, Inc., operated at arm&rsquo;s length. This site is informational only and is not an offer to sell, or a solicitation of an offer to buy, any security.</p>
+    <p class="footer-disclaimer" data-pgc-setting="footer_disclaimer">Proving Ground Capital (PGC) is the commercial arm of Applied Research Institute, Inc., operated at arm&rsquo;s length. This site is informational only and is not an offer to sell, or a solicitation of an offer to buy, any security.</p>
     <div class="footer-legal">
       <p>&copy;2026 Proving Ground Capital (PGC). All rights reserved.</p>
       <p>Proving Ground Capital (PGC) <span aria-hidden="true">//</span> An Applied Research Institute Company</p>
@@ -137,5 +137,6 @@
   </div>
 </footer>
 <script src="/assets/js/main.js" defer></script>
+<script type="module" src="/assets/js/content.js"></script>
 </body>
 </html>

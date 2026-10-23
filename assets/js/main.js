@@ -21,9 +21,9 @@
 
   /* ---------- Scroll reveal (respects prefers-reduced-motion) ---------- */
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var revealEls = document.querySelectorAll("[data-reveal]");
-  if (!reduceMotion && "IntersectionObserver" in window && revealEls.length) {
-    var io = new IntersectionObserver(
+  var io = null;
+  if (!reduceMotion && "IntersectionObserver" in window) {
+    io = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
           if (entry.isIntersecting) {
@@ -34,10 +34,16 @@
       },
       { rootMargin: "0px 0px -8% 0px", threshold: 0.1 }
     );
-    revealEls.forEach(function (el) { io.observe(el); });
-  } else {
-    revealEls.forEach(function (el) { el.classList.add("is-visible"); });
   }
+  /* Also used by content.js for sections that arrive from Supabase after the
+     first pass, so hydrated or newly added blocks still fade in. */
+  window.pgcRevealScan = function (root) {
+    var els = (root || document).querySelectorAll("[data-reveal]:not(.is-visible)");
+    Array.prototype.forEach.call(els, function (el) {
+      if (io) io.observe(el); else el.classList.add("is-visible");
+    });
+  };
+  window.pgcRevealScan(document);
 
   /* ---------- Contact page: prefill audience + intent from query string ---------- */
   var params = new URLSearchParams(window.location.search);
