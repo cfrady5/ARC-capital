@@ -126,7 +126,7 @@ const noticeText = (p) => text(p, "#pNotice");
   check(r, "deniedShown", true);
   const scr = await screens(p);
   check(r, "deniedIsTheOnlyScreen", onlyScreen(scr, "pDenied"), scr);
-  check(r, "deniedCopy", /does not have the “Proving Ground Capital pages” permission/.test(await text(p, "#pDeniedMsg")), await text(p, "#pDeniedMsg"));
+  check(r, "deniedCopy", /does not have the “Proving Ground Capital pages” or “Proving Ground Capital email campaigns” permission/.test(await text(p, "#pDeniedMsg")), await text(p, "#pDeniedMsg"));
   const m = await internalMarkup(p);
   check(r, "nothingInternal", m.appHidden && m.appHeight === 0 && m.navItems === 0 && m.viewText === "", m);
   check(r, "mentionsUsersAccess", /Users & Access/.test(await text(p, "#pDenied")));

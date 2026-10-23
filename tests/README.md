@@ -70,18 +70,60 @@ node tests/public-content.headless.mjs
 node tests/portal.headless.mjs
 ```
 
+## Email campaigns (`newsletter.headless.mjs`)
+
+The Email section of the portal (Campaigns, Reports, Templates, Email lists —
+ARI's Mailchimp composer ported for PGC) against the stub, with the
+`pgc-mailchimp` function answered in-page:
+
+- **Website contributor without the module:** no Email section, `#/campaigns`
+  refused with a notice, direct reads/inserts of `pgc_campaigns` refused.
+- **Campaigns contributor:** lands on Campaigns (no page editor), list with
+  status pills, can select only their own drafts; New campaign → the canvas
+  composer with the PGC block tiles (no post/event), adds a heading and a text
+  block, the canvas shows them with PGC branding (dark lockup, mint rule, PGC
+  footer, `**bold**` applied), Create campaign writes a draft stamped
+  `created_by`, Send test calls `test_send` with the typed addresses,
+  "Review & submit" offers Submit for review but no Send now / Schedule,
+  submit sets `in_review`, direct shortcuts (status sent, changes requested,
+  deleting someone else's draft) are refused, a sent campaign opens locked.
+- **Publisher:** "Review & send" → Send now → the confirm names the audience
+  size → `send` is called → the row is `sent` and the editor locks; Save as
+  template writes `pgc_campaign_templates` and the Templates page lists it with
+  the four layouts; Reports shows the audience and the sent campaign; Email
+  lists shows the groups band, browsing a group, Add contact → `add_member`;
+  leaving an unsaved campaign asks Save / Leave / Stay.
+
+```sh
+node tests/newsletter.headless.mjs
+```
+
+## Email renderer (`newsletter-render.test.mjs`)
+
+Node only: the committed `assets/js/newsletter-render.js` matches a fresh
+transpile of `supabase/functions/pgc-mailchimp/render.ts`, and a rendered
+campaign carries the PGC lockup, mint rule, dark-teal buttons/footer, Funnel
+Sans, Mailchimp merge tags, editor markers only in editor mode, escaped author
+markup and no ARI wording. 19 checks.
+
+```sh
+node tests/newsletter-render.test.mjs
+node tools/build-newsletter-render.mjs   # regenerate after editing render.ts
+```
+
 ## Database (`db/`)
 
 `local_schema.sql` recreates the parts of ARI's production schema the PGC
 migrations depend on (auth stubs, `employees`, `employee_access` with the
 pre-PGC module check, the helpers, `content_revisions`, a plain `storage`
-schema). Then the two PGC migrations and `rls_tests.sql` (93 checks) run:
+schema). Then the PGC migrations and `rls_tests.sql` (127 checks) run:
 
 ```sh
 createdb pgc_test
 psql -v ON_ERROR_STOP=1 -d pgc_test -f tests/db/local_schema.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_site_content.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_media_bucket.sql
+psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261024_pgc_newsletter.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f tests/db/rls_tests.sql    # last line: failures | total
 # optional: the seed applies cleanly and is idempotent
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_seed_content.sql
@@ -95,6 +137,13 @@ changes, delete, edit live rows, restore or delete uploads; publishers edit
 live rows, publish (review state resets), request changes, unpublish, delete,
 restore (restores are logged; ARI tables are refused); administrators have it
 all implicitly; the database stamps `updated_by`; no-op updates log nothing.
+Email campaigns (`pgc_newsletter`): a website contributor without the module
+and anon see nothing; contributors create drafts (creator stamped, Mailchimp
+columns frozen), submit, cannot request changes / mark sent / touch sent rows /
+delete others' drafts; publishers request changes and delete drafts but cannot
+bypass the sending service or edit sent rows; the service role sets
+`scheduled`, after which the row is frozen; administrators have the module
+implicitly while ARI's explicit `newsletter` stays out of their reach.
 
 ## Regenerating the seed
 

@@ -7,7 +7,7 @@
 // The test sets window.__SEED, __ROLE, __STATUS, __MODULES, __ANON before load.
 const SEED = window.__SEED || {};
 const TABLES = {};
-["pgc_pages", "pgc_sections", "pgc_team", "pgc_settings", "content_revisions", "employees", "employee_access"].forEach((t) => (TABLES[t] = (SEED[t] || []).map((r) => ({ ...r }))));
+["pgc_pages", "pgc_sections", "pgc_team", "pgc_settings", "pgc_campaigns", "pgc_campaign_templates", "content_revisions", "employees", "employee_access"].forEach((t) => (TABLES[t] = (SEED[t] || []).map((r) => ({ ...r }))));
 const ME = { email: window.__ROLE_EMAIL || "test@theari.us", full_name: window.__ROLE_NAME || "Terry Tester", role: window.__ROLE || "employee", status: window.__STATUS || "active", avatar_url: null };
 const MODS = Object.assign({}, window.__MODULES || {});
 const PGC = ["pgc_pages", "pgc_sections", "pgc_team", "pgc_settings"];
@@ -15,6 +15,10 @@ const isActive = () => !window.__ANON && ME.status === "active";
 const isAdmin = () => isActive() && ME.role === "admin";
 const canEdit = () => isAdmin() || (isActive() && ["contributor", "publisher"].includes(MODS.pgc));
 const canPublish = () => isAdmin() || (isActive() && MODS.pgc === "publisher");
+// Email campaigns: the pgc_newsletter module (administrators have it implicitly).
+const nlEdit = () => isAdmin() || (isActive() && ["contributor", "publisher"].includes(MODS.pgc_newsletter));
+const nlPublish = () => isAdmin() || (isActive() && MODS.pgc_newsletter === "publisher");
+const NL = ["pgc_campaigns", "pgc_campaign_templates"];
 const isComms = () => isAdmin() || (isActive() && Object.keys(MODS).some((m) => m !== "messages"));
 const rls = (msg) => { throw new Error(msg || "new row violates row-level security policy"); };
 let idc = 1;
@@ -40,11 +44,19 @@ function builder(table) {
   const st = { filters: [], order: [], limit: null, single: false, maybe: false, op: "select", payload: null };
   const visible = (r) => {
     if (PGC.includes(table)) return r.published === true || canEdit();
+    if (NL.includes(table)) return nlEdit();
     if (table === "content_revisions") return isComms();
     if (table === "employees") return isActive();
     return false;
   };
-  const writable = (r) => PGC.includes(table) && (canPublish() || (canEdit() && r.published === false));
+  // pgc_campaigns: publishers change anything not sent; contributors draft / in_review / changes_requested rows.
+  const writable = (r) => PGC.includes(table) ? (canPublish() || (canEdit() && r.published === false))
+    : table === "pgc_campaigns" ? (nlPublish() || (nlEdit() && ["draft", "in_review", "changes_requested"].includes(r.status)))
+    : table === "pgc_campaign_templates" ? nlEdit() : false;
+  const deletable = (r) => PGC.includes(table) ? canPublish()
+    : table === "pgc_campaigns" ? ((nlPublish() && r.status !== "sent") || (nlEdit() && r.status === "draft" && String(r.created_by || "").toLowerCase() === ME.email.toLowerCase()))
+    : table === "pgc_campaign_templates" ? nlEdit() : false;
+  const SERVER_COLS = ["mailchimp_id", "mailchimp_web_id", "scheduled_for", "sent_at", "emails_sent", "test_sent_at", "test_sent_to"];
   const apply = () => {
     let out = rows.filter((r) => visible(r) && st.filters.every((f) => f(r)));
     if (st.order.length) out = [...out].sort((a, b) => { for (const { col, asc } of st.order) { const x = a[col], y = b[col]; if (x === y) continue; if (x == null) return 1; if (y == null) return -1; return (x < y ? -1 : 1) * (asc ? 1 : -1); } return 0; });
@@ -73,9 +85,17 @@ function builder(table) {
           result = { data: st.single ? out[0] || null : out, error: null };
           if (st.single && !st.maybe && !out[0]) result = { data: null, error: { message: "Row not found", code: "PGRST116" } };
         } else if (st.op === "insert") {
-          if (window.__ANON || !PGC.includes(table)) throw new Error("permission denied for table " + table);
+          if (window.__ANON || !(PGC.includes(table) || NL.includes(table))) throw new Error("permission denied for table " + table);
           const list = (Array.isArray(st.payload) ? st.payload : [st.payload]).map((p) => {
-            const row = { id: uuid(), created_at: new Date().toISOString(), published: false, review_state: "draft", ...p };
+            const now = new Date().toISOString();
+            if (NL.includes(table)) {
+              // The pgc_campaigns_guard / pgc_campaign_templates_stamp triggers.
+              const row = { id: uuid(), created_at: now, updated_at: now, ...p, created_by: ME.email, updated_by: ME.email };
+              if (table === "pgc_campaigns") { if (row.status == null) row.status = "draft"; if (!["draft", "in_review"].includes(row.status)) throw new Error("New campaigns start as drafts."); SERVER_COLS.forEach((k) => (row[k] = null)); }
+              if (!writable(row)) rls();
+              rows.push(row); window.__LOG.push(["insert", table, row]); return row;
+            }
+            const row = { id: uuid(), created_at: now, published: false, review_state: "draft", ...p };
             if (table === "pgc_sections") { row.items = row.items || []; row.bullets = row.bullets || []; }
             if (!writable(row)) rls();
             guard(table, null, row);
@@ -84,11 +104,19 @@ function builder(table) {
           });
           result = { data: st.single ? list[0] : list, error: null };
         } else if (st.op === "update") {
-          if (window.__ANON || !PGC.includes(table)) throw new Error("permission denied for table " + table);
+          if (window.__ANON || !(PGC.includes(table) || NL.includes(table))) throw new Error("permission denied for table " + table);
           const out = apply().filter(writable);
           out.forEach((r) => {
             const next = Object.assign({}, r, st.payload);
             if (!writable(next)) rls();
+            if (table === "pgc_campaigns") {
+              if (["scheduled", "sent"].includes(r.status)) throw new Error("A " + r.status + " campaign can only be changed with the Campaigns page actions.");
+              if (["scheduled", "sent"].includes(next.status)) throw new Error("Use Send or Schedule on the Campaigns page to send a campaign.");
+              if (next.status === "changes_requested" && next.status !== r.status && !nlPublish()) throw new Error("Only a publisher can request changes.");
+              SERVER_COLS.concat(["created_by", "created_at"]).forEach((k) => (next[k] = r[k]));
+              next.updated_by = ME.email; next.updated_at = new Date().toISOString(); Object.assign(r, next); return;
+            }
+            if (table === "pgc_campaign_templates") { next.created_by = r.created_by; next.created_at = r.created_at; next.updated_by = ME.email; next.updated_at = new Date().toISOString(); Object.assign(r, next); return; }
             guard(table, r, next);
             const changed = JSON.stringify({ ...r, updated_at: 0, updated_by: 0 }) !== JSON.stringify({ ...next, updated_at: 0, updated_by: 0 });
             Object.assign(r, next);
@@ -97,9 +125,9 @@ function builder(table) {
           window.__LOG.push(["update", table, st.payload, out.length]);
           result = { data: st.single ? out[0] || null : out, error: null };
         } else if (st.op === "delete") {
-          if (window.__ANON || !PGC.includes(table)) throw new Error("permission denied for table " + table);
-          const out = apply().filter(() => canPublish());
-          out.forEach((r) => { rows.splice(rows.indexOf(r), 1); logRevision(table, "delete", r); });
+          if (window.__ANON || !(PGC.includes(table) || NL.includes(table))) throw new Error("permission denied for table " + table);
+          const out = apply().filter(deletable);
+          out.forEach((r) => { rows.splice(rows.indexOf(r), 1); if (PGC.includes(table)) logRevision(table, "delete", r); });
           if (table === "pgc_pages") out.forEach((p) => (TABLES.pgc_sections = TABLES.pgc_sections.filter((s) => s.page_id !== p.id)));
           window.__LOG.push(["delete", table, out.length]);
           result = { data: out, error: null };

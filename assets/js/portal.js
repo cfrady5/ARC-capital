@@ -64,6 +64,7 @@ function notice(msg, isError) {
 }
 
 /* --------------------------------------------------------------- access */
+const NL_MODULE = "pgc_newsletter";
 function buildAccess(raw) {
   const role = (raw && raw.role) || null;
   const status = (raw && raw.status) || null;
@@ -71,11 +72,15 @@ function buildAccess(raw) {
   const active = status === "active";
   const isAdmin = active && role === "admin";
   const level = isAdmin ? "publisher" : active ? modules[PGC_MODULE] || null : null;
+  // Email campaigns are a second module; administrators have it implicitly too.
+  const nlLevel = isAdmin ? "publisher" : active ? modules[NL_MODULE] || null : null;
   return {
     email: (raw && raw.email) || "", fullName: (raw && raw.full_name) || "", role, status, isAdmin,
-    level, isEmployee: !!raw, active,
+    level, nlLevel, isEmployee: !!raw, active,
     canEdit: level === "contributor" || level === "publisher",
     canPublish: level === "publisher",
+    canEditNl: nlLevel === "contributor" || nlLevel === "publisher",
+    canPublishNl: nlLevel === "publisher",
   };
 }
 
@@ -113,15 +118,18 @@ async function bootInner() {
       : "This account is suspended. Nothing on this site can be edited with it.";
     return;
   }
-  if (!access.canEdit) {
+  if (!access.canEdit && !access.canEditNl) {
     denied.hidden = false;
-    $("#pDeniedMsg").textContent = "Your account is active but does not have the “Proving Ground Capital pages” permission.";
+    $("#pDeniedMsg").textContent = "Your account is active but does not have the “Proving Ground Capital pages” or “Proving Ground Capital email campaigns” permission.";
     return;
   }
   app.hidden = false;
   $("#pWho").textContent = access.fullName || access.email;
-  $("#pLevel").textContent = access.isAdmin ? "Administrator" : access.level === "publisher" ? "Publisher" : "Contributor";
-  await loadPages();
+  $("#pLevel").textContent = access.isAdmin ? "Administrator" : (access.level || access.nlLevel) === "publisher" ? "Publisher" : "Contributor";
+  // Each sidebar section follows its own permission.
+  ["#pPagesH", "#pPageNav", "#pOtherH", "#pOtherNav"].forEach((s) => ($(s).hidden = !access.canEdit));
+  ["#pEmailH", "#pEmailNav"].forEach((s) => ($(s).hidden = !access.canEditNl));
+  if (access.canEdit) await loadPages();
   renderNav();
   if (!bootInner.routed) { window.addEventListener("hashchange", onRoute); bootInner.routed = true; }
   await onRoute();
@@ -153,8 +161,10 @@ function wireSignin() {
     say("Check your inbox — the sign-in link is on its way to " + email + ".", "is-ok");
   });
   document.querySelectorAll("[data-signout]").forEach((b) => b.addEventListener("click", async () => {
+    if (!(await ensureClean())) return;
     await supabase.auth.signOut();
     state.access = null; state.page = null; state.sections = [];
+    NL.page = null; NL.loading = null; NL_VIEWS.forEach((v) => { const p = $("#panel-" + v); if (p) p.innerHTML = ""; });
     location.hash = "";
     boot();
   }));
@@ -195,25 +205,53 @@ async function readLivePage(def) {
 }
 
 /* -------------------------------------------------------------- routing */
+const NL_VIEWS = ["campaigns", "nlreports", "nltemplates", "nllists"];
 function parseHash() {
-  const m = String(location.hash || "").match(/^#\/(page|team|settings|history)(?:\/([a-z0-9-]+))?/);
-  if (!m) return { view: "page", slug: (state.pages[0] || PAGE_DEFS[0]).slug };
+  const m = String(location.hash || "").match(/^#\/(page|team|settings|history|campaigns|nlreports|nltemplates|nllists)(?:\/([a-z0-9-]+))?/);
+  if (!m) return state.access && !state.access.canEdit && state.access.canEditNl ? { view: "campaigns", slug: null } : { view: "page", slug: (state.pages[0] || PAGE_DEFS[0]).slug };
   return { view: m[1], slug: m[2] || null };
 }
+/* Unsaved work anywhere (page editor or an open campaign) is settled before the route changes. */
+async function ensureClean() {
+  if (NL.page && NL.page.isDirty()) {
+    const choice = await confirmDialog({ kicker: "Unsaved changes", title: "Save this campaign before leaving?", body: "Your edits are not saved yet.",
+      buttons: [{ label: "Save and leave", value: "save", cls: "btn btn-primary" }, { label: "Leave without saving", value: "discard", cls: "btn btn-danger" }, { label: "Stay", value: "stay", cls: "btn btn-ghost" }], escValue: "stay" });
+    if (choice === "stay") return false;
+    if (choice === "save") return await NL.page.save();
+    NL.page.discard();
+    return true;
+  }
+  if (state.dirty) return confirm("You have unsaved changes. Leave this page and lose them?");
+  return true;
+}
 async function onRoute() {
-  if (state.dirty && !confirm("You have unsaved changes. Leave this page and lose them?")) {
+  if (!(await ensureClean())) {
     history.replaceState(null, "", state.route && state.route.hash || "#/");
     return;
   }
   state.dirty = false;
   const r = parseHash();
   r.hash = location.hash;
+  const access = state.access;
+  if ((r.view === "page" || r.view === "team" || r.view === "settings" || r.view === "history") && !access.canEdit) { location.hash = "#/campaigns"; return; }
+  if (NL_VIEWS.includes(r.view) && !access.canEditNl) { state.flash = "You don’t have access to email campaigns."; location.hash = "#/"; return; }
   state.route = r;
   notice("");
+  // A message set just before a redirect survives the route change.
+  if (state.flash) { notice(state.flash, true); state.flash = null; }
   $("#pSidebar").classList.remove("is-open"); $("#pNavToggle").setAttribute("aria-expanded", "false");
   document.querySelectorAll(".p-nav-item").forEach((b) => b.removeAttribute("aria-current"));
   const view = $("#pView"); view.innerHTML = "";
-  if (r.view === "page") {
+  const marketing = NL_VIEWS.includes(r.view);
+  $("#pMarketing").hidden = !marketing; view.hidden = marketing;
+  if (marketing) {
+    state.page = null; state.sections = [];
+    const btn = $('.p-nav-item[data-view="' + r.view + '"]'); if (btn) btn.setAttribute("aria-current", "page");
+    NL_VIEWS.forEach((v) => { const p = $("#panel-" + v); if (p) p.hidden = v !== r.view; });
+    const opts = NL.pendingOpts || {}; NL.pendingOpts = null;
+    try { await initNewsletter(); if (NL.page) await NL.page.show(r.view, opts); }
+    catch (e) { notice("The email campaigns pages could not load: " + errText(e), true); }
+  } else if (r.view === "page") {
     const btn = $('.p-nav-item[data-slug="' + r.slug + '"]'); if (btn) btn.setAttribute("aria-current", "page");
     await renderPageEditor(r.slug);
   } else {
@@ -225,6 +263,77 @@ async function onRoute() {
   $("#pmain").focus({ preventScroll: true });
 }
 
+/* ------------------------------------------------- email campaigns (Mailchimp) */
+const NL = { page: null, pendingOpts: null, loading: null };
+async function initNewsletter() {
+  if (NL.page || !state.access || !state.access.canEditNl) return;
+  if (NL.loading) return NL.loading;
+  NL.loading = (async () => {
+    const mod = await import("./newsletter.js");
+    const access = state.access;
+    NL.page = mod.initMarketing({
+      supabase,
+      roots: { campaigns: $("#panel-campaigns"), nlreports: $("#panel-nlreports"), nltemplates: $("#panel-nltemplates"), nllists: $("#panel-nllists") },
+      // The module asks per module name; here only pgc_newsletter is ever asked for.
+      access: { email: access.email, canEdit: (m) => (m === NL_MODULE ? access.canEditNl : false), canPublish: (m) => (m === NL_MODULE ? access.canPublishNl : false) },
+      edgeCall, confirmDialog, fmtDate, fmtDateTime,
+      notice: (text, kind, ms) => { notice(text, kind === "error"); clearTimeout(notice.t); notice.t = setTimeout(() => notice(""), ms || (kind === "error" ? 8000 : 5000)); },
+      navigate: (tab, opts) => { NL.pendingOpts = opts || null; if (location.hash === "#/" + tab) onRoute(); else location.hash = "#/" + tab; },
+    });
+  })();
+  await NL.loading;
+}
+/* Call the pgc-mailchimp edge function with the signed-in person's token. */
+async function edgeCall(fn, body) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("You’re signed out. Sign in again.");
+  const r = await fetch(supabase.supabaseUrl + "/functions/v1/" + fn, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: supabase.supabaseKey, Authorization: "Bearer " + session.access_token },
+    body: JSON.stringify(body || {}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(d.error || "Request failed (" + r.status + ")"), { checklist: d.checklist });
+  return d;
+}
+/* An accessible confirm dialog: resolves with the chosen button's value (false / escValue on Escape). */
+let pendingConfirm = null;
+function confirmDialog(opts) {
+  if (pendingConfirm) pendingConfirm.cancel();
+  return new Promise((resolve) => {
+    const opener = document.activeElement;
+    const escValue = opts.escValue !== undefined ? opts.escValue : false;
+    const kicker = el("p", { class: "p-modal-kicker", text: opts.kicker || "Please confirm" });
+    const title = el("h2", { class: "p-modal-title", id: "pModalTitle", text: opts.title || "Are you sure?" });
+    const body = el("p", { class: "p-modal-body", id: "pModalBody", text: opts.body || "" });
+    const actions = el("div", { class: "p-modal-actions" });
+    const card = el("div", { class: "p-modal-card", role: "alertdialog", "aria-modal": "true", "aria-labelledby": "pModalTitle", "aria-describedby": "pModalBody" }, kicker, title, body, actions);
+    const modal = el("div", { class: "p-modal" }, card);
+    let settled = false;
+    const done = (v) => {
+      if (settled) return; settled = true; pendingConfirm = null;
+      document.removeEventListener("keydown", onKey); modal.remove();
+      if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus({ preventScroll: true });
+      resolve(v);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); done(escValue); return; }
+      if (e.key === "Tab") { const bs = [...actions.querySelectorAll("button")]; const i = bs.indexOf(document.activeElement); if (i < 0 || (e.shiftKey && i === 0) || (!e.shiftKey && i === bs.length - 1)) { e.preventDefault(); bs[e.shiftKey ? bs.length - 1 : 0].focus(); } }
+    };
+    (opts.buttons || [
+      { label: opts.confirmLabel || "Delete", value: true, cls: opts.danger === false ? "btn btn-primary" : "btn btn-danger" },
+      { label: "Cancel", value: false, cls: "btn btn-ghost" },
+    ]).forEach((b) => actions.append(el("button", { type: "button", class: b.cls || "btn btn-ghost", onclick: () => done(b.value) }, b.label)));
+    modal.addEventListener("click", (e) => { if (e.target === modal) done(escValue); });
+    document.addEventListener("keydown", onKey);
+    document.body.append(modal);
+    pendingConfirm = { cancel: () => done(escValue) };
+    const first = actions.querySelector("button"); if (first) first.focus();
+  });
+}
+function fmtDate(ts) { if (!ts) return ""; const d = new Date(ts); return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
+function fmtDateTime(ts) { if (!ts) return ""; const d = new Date(ts); return isNaN(d.getTime()) ? "" : d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }); }
+
 function renderNav() {
   const ul = $("#pPageNav"); ul.innerHTML = "";
   const defs = PAGE_DEFS.map((d) => Object.assign({}, d, state.pages.find((p) => p.slug === d.slug) || {}));
@@ -234,7 +343,7 @@ function renderNav() {
       el("span", { text: d.nav_label || d.title || d.slug }), d.id ? pill(d) : el("span", { class: "p-pill p-pill--draft", text: "Not set up" }));
     ul.append(el("li", null, b));
   });
-  document.querySelectorAll("#pOtherNav .p-nav-item").forEach((b) => (b.onclick = () => (location.hash = "#/" + b.dataset.view)));
+  document.querySelectorAll("#pOtherNav .p-nav-item, #pEmailNav .p-nav-item").forEach((b) => (b.onclick = () => { if (location.hash === "#/" + b.dataset.view) onRoute(); else location.hash = "#/" + b.dataset.view; }));
   $("#pNavToggle").onclick = () => { const sb = $("#pSidebar"); const open = sb.classList.toggle("is-open"); $("#pNavToggle").setAttribute("aria-expanded", String(open)); };
 }
 
@@ -676,4 +785,4 @@ function imageField(label, url, alt, onChange, locked) {
 clearTimeout(window.__pgcBootTimer);
 wireSignin();
 boot();
-window.addEventListener("beforeunload", (e) => { if (state.dirty) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", (e) => { if (state.dirty || (NL.page && NL.page.isDirty())) { e.preventDefault(); e.returnValue = ""; } });

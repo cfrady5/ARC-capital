@@ -141,6 +141,18 @@ input[readonly], textarea[readonly], input:disabled, textarea:disabled, select:d
 .p-preview iframe { width: 100%; height: min(78vh, 900px); border: 1px solid var(--line); border-radius: 12px; background: var(--ink); }
 .p-preview.is-mobile iframe { width: 390px; max-width: 100%; margin: 0 auto; display: block; }
 
+/* ---------- confirm dialog ---------- */
+.p-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding: clamp(16px, 8vh, 64px) 16px; background: rgba(2, 12, 14, 0.7); backdrop-filter: blur(3px); }
+.p-modal-card { width: min(520px, 100%); background: var(--ink-2); border: 1px solid var(--line-strong); border-radius: 16px; padding: 24px; color: var(--text-body); }
+.p-modal-kicker { margin: 0 0 4px; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
+.p-modal-title { margin: 0 0 10px; font-size: 1.25rem; color: var(--white); }
+.p-modal-body { margin: 0; line-height: 1.5; }
+.p-modal-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.p-modal-actions .btn { padding: 9px 16px; font-size: 0.88rem; }
+
+/* ---------- email campaign pages (assets/css/newsletter.css carries the page styles) ---------- */
+#pMarketing .portal-panel[hidden] { display: none; }
+
 /* ---------- lists (team, settings, history) ---------- */
 .p-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 .p-table th, .p-table td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }

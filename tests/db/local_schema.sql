@@ -87,9 +87,11 @@ language sql stable security definer set search_path = public as $$
 create or replace function public.is_admin() returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.employees where lower(email) = public.jwt_email() and status = 'active' and role = 'admin'); $$;
+-- As production has it since 20260923_newsletter.sql: administrators pass every
+-- module except the explicit "newsletter".
 create or replace function public.has_access(p_module text, p_level text) returns boolean
 language sql stable security definer set search_path = public as $$
-  select public.is_admin() or exists (
+  select (public.is_admin() and p_module <> 'newsletter') or exists (
     select 1 from public.employee_access a join public.employees e on e.id = a.employee_id
      where lower(e.email) = public.jwt_email() and e.status = 'active' and a.module = p_module
        and case p_level when 'contributor' then a.level in ('contributor', 'publisher')

@@ -246,6 +246,74 @@ select public.t_count('anon: still sees exactly the published sections', $$selec
 select public.t_count('anon: never sees a changes-requested draft', $$select * from public.pgc_sections where review_state = 'changes_requested'$$, 0);
 reset role;
 
+-- ================= EMAIL CAMPAIGNS (pgc_newsletter) =================
+select public.as_user(null);
+select public.t('campaigns: pgc_newsletter contributor grant is accepted', $$insert into public.employee_access (employee_id, module, level) values ('00000000-0000-0000-0000-000000000004', 'pgc_newsletter', 'contributor')$$, true);
+select public.t('campaigns: pgc_newsletter publisher grant is accepted', $$insert into public.employee_access (employee_id, module, level) values ('00000000-0000-0000-0000-000000000006', 'pgc_newsletter', 'publisher')$$, true);
+insert into public.pgc_campaigns (id, title, subject, status, created_by) values
+  ('70000000-0000-0000-0000-000000000001', 'Sent issue', 'Sent', 'sent', 'news@theari.us'),
+  ('70000000-0000-0000-0000-000000000002', 'Someone else''s draft', 'Draft', 'draft', 'news@theari.us');
+update public.pgc_campaigns set mailchimp_id = 'mc-sent', emails_sent = 120, sent_at = now() where id = '70000000-0000-0000-0000-000000000001';
+
+-- A pgc (website) contributor without the campaigns module sees nothing.
+set role authenticated;
+select public.as_user('contrib@theari.us');
+select public.t_count('campaigns: website contributor without the module sees no campaigns', $$select * from public.pgc_campaigns$$, 0);
+select public.t('campaigns: …and cannot create one', $$insert into public.pgc_campaigns (title) values ('x')$$, false);
+select public.t_count('campaigns: …and sees no templates', $$select * from public.pgc_campaign_templates$$, 0);
+reset role;
+-- anon: nothing at all
+set role anon; select public.as_user(null, 'anon');
+select public.t('campaigns: anon cannot read campaigns', $$select * from public.pgc_campaigns$$, false);
+select public.t('campaigns: anon cannot read templates', $$select * from public.pgc_campaign_templates$$, false);
+reset role;
+-- contributor (base@theari.us now holds pgc_newsletter/contributor)
+set role authenticated;
+select public.as_user('base@theari.us');
+select public.t_eq('campaigns: my_access reports pgc_newsletter=contributor', $$select (public.my_access() -> 'modules') ->> 'pgc_newsletter'$$, 'contributor');
+select public.t_count('campaigns: contributor sees every campaign', $$select * from public.pgc_campaigns$$, 2);
+select public.t('campaigns: contributor creates a draft', $$insert into public.pgc_campaigns (id, title, subject) values ('70000000-0000-0000-0000-000000000003', 'My draft', 'Hello')$$, true);
+select public.t_eq('campaigns: created_by is stamped by the database', $$select created_by from public.pgc_campaigns where id = '70000000-0000-0000-0000-000000000003'$$, 'base@theari.us');
+select public.t('campaigns: contributor cannot create a scheduled campaign', $$insert into public.pgc_campaigns (title, status) values ('x', 'scheduled')$$, false);
+select public.t('campaigns: contributor cannot write the Mailchimp columns', $$update public.pgc_campaigns set mailchimp_id = 'hack', test_sent_at = now() where id = '70000000-0000-0000-0000-000000000003'$$, true);
+select public.t_eq('campaigns: …the Mailchimp columns stayed null', $$select coalesce(mailchimp_id, '<null>') || '/' || coalesce(test_sent_at::text, '<null>') from public.pgc_campaigns where id = '70000000-0000-0000-0000-000000000003'$$, '<null>/<null>');
+select public.t_rows('campaigns: contributor submits for review', $$update public.pgc_campaigns set status = 'in_review' where id = '70000000-0000-0000-0000-000000000003'$$, 1);
+select public.t('campaigns: contributor cannot request changes', $$update public.pgc_campaigns set status = 'changes_requested' where id = '70000000-0000-0000-0000-000000000003'$$, false);
+select public.t('campaigns: contributor cannot mark a campaign sent', $$update public.pgc_campaigns set status = 'sent' where id = '70000000-0000-0000-0000-000000000003'$$, false);
+select public.t_rows('campaigns: contributor cannot touch a sent campaign (0 rows)', $$update public.pgc_campaigns set subject = 'x' where id = '70000000-0000-0000-0000-000000000001'$$, 0);
+select public.t_rows('campaigns: contributor cannot delete someone else''s draft (0 rows)', $$delete from public.pgc_campaigns where id = '70000000-0000-0000-0000-000000000002'$$, 0);
+select public.t_rows('campaigns: contributor cannot delete a sent campaign (0 rows)', $$delete from public.pgc_campaigns where id = '70000000-0000-0000-0000-000000000001'$$, 0);
+select public.t('campaigns: contributor creates a template', $$insert into public.pgc_campaign_templates (id, name) values ('80000000-0000-0000-0000-000000000001', 'Monthly')$$, true);
+select public.t_eq('campaigns: template creator stamped', $$select created_by from public.pgc_campaign_templates where id = '80000000-0000-0000-0000-000000000001'$$, 'base@theari.us');
+reset role;
+-- publisher (news@theari.us holds pgc_newsletter/publisher)
+set role authenticated;
+select public.as_user('news@theari.us');
+select public.t_rows('campaigns: publisher requests changes', $$update public.pgc_campaigns set status = 'changes_requested' where id = '70000000-0000-0000-0000-000000000003'$$, 1);
+select public.t('campaigns: publisher cannot bypass the sending service', $$update public.pgc_campaigns set status = 'sent' where id = '70000000-0000-0000-0000-000000000003'$$, false);
+select public.t('campaigns: publisher cannot edit a sent campaign either', $$update public.pgc_campaigns set subject = 'x' where id = '70000000-0000-0000-0000-000000000001'$$, false);
+select public.t_rows('campaigns: publisher deletes someone else''s draft', $$delete from public.pgc_campaigns where id = '70000000-0000-0000-0000-000000000002'$$, 1);
+select public.t_rows('campaigns: publisher cannot delete a sent campaign (0 rows)', $$delete from public.pgc_campaigns where id = '70000000-0000-0000-0000-000000000001'$$, 0);
+select public.t_rows('campaigns: publisher edits a template, creator kept', $$update public.pgc_campaign_templates set description = 'd' where id = '80000000-0000-0000-0000-000000000001'$$, 1);
+select public.t_eq('campaigns: …updated_by is the publisher', $$select updated_by || '/' || created_by from public.pgc_campaign_templates where id = '80000000-0000-0000-0000-000000000001'$$, 'news@theari.us/base@theari.us');
+reset role;
+-- the sending service (service role) owns the Mailchimp columns and statuses
+set role service_role;
+select public.as_user(null, 'service_role');
+select public.t_rows('campaigns: the server marks a campaign scheduled', $$update public.pgc_campaigns set status = 'scheduled', mailchimp_id = 'mc1', scheduled_for = now() + interval '1 day' where id = '70000000-0000-0000-0000-000000000003'$$, 1);
+reset role;
+set role authenticated;
+select public.as_user('news@theari.us');
+select public.t('campaigns: a scheduled campaign is frozen for the portal', $$update public.pgc_campaigns set subject = 'x' where id = '70000000-0000-0000-0000-000000000003'$$, false);
+reset role;
+-- administrator: implicit publisher (unlike ARI's explicit "newsletter")
+set role authenticated;
+select public.as_user('admin@theari.us');
+select public.t_count('campaigns: admin sees every campaign without a grant', $$select * from public.pgc_campaigns$$, 2);
+select public.t('campaigns: admin creates a draft', $$insert into public.pgc_campaigns (title) values ('Admin draft')$$, true);
+select public.t_eq('campaigns: admin has no ARI newsletter access (that module stays explicit)', $$select public.can_edit('newsletter')::text$$, 'false');
+reset role;
+
 -- ================= REPORT =================
 select n, case when ok then 'PASS' else 'FAIL' end as result, label, note from public.t_results order by n;
 select count(*) filter (where not ok) as failures, count(*) as total from public.t_results;

@@ -12,6 +12,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/css/main.css">
 <link rel="stylesheet" href="/assets/css/portal.css">
+<link rel="stylesheet" href="/assets/css/newsletter.css">
+<link rel="stylesheet" href="/assets/css/newsletter-editor.css">
 </head>
 <body class="portal-body">
 <a class="skip-link" href="#pmain">Skip to content</a>
@@ -79,17 +81,33 @@
     <nav class="p-sidebar" id="pSidebar" aria-label="Sections">
       <p class="p-sidebar-h" id="pPagesH">Pages</p>
       <ul class="p-nav" id="pPageNav"></ul>
-      <p class="p-sidebar-h">People &amp; settings</p>
+      <p class="p-sidebar-h" id="pOtherH">People &amp; settings</p>
       <ul class="p-nav" id="pOtherNav">
         <li><button type="button" class="p-nav-item" data-view="team">Team</button></li>
         <li><button type="button" class="p-nav-item" data-view="settings">Site settings</button></li>
         <li><button type="button" class="p-nav-item" data-view="history">Change history</button></li>
+      </ul>
+      <!-- Email campaigns (Mailchimp): shown only with the pgc_newsletter module. -->
+      <p class="p-sidebar-h" id="pEmailH" hidden>Email</p>
+      <ul class="p-nav" id="pEmailNav" hidden>
+        <li><button type="button" class="p-nav-item" data-view="campaigns">Campaigns</button></li>
+        <li><button type="button" class="p-nav-item" data-view="nlreports">Reports</button></li>
+        <li><button type="button" class="p-nav-item" data-view="nltemplates">Templates</button></li>
+        <li><button type="button" class="p-nav-item" data-view="nllists">Email lists</button></li>
       </ul>
     </nav>
 
     <main class="p-main" id="pmain" tabindex="-1">
       <p class="p-notice" id="pNotice" role="status" aria-live="polite" hidden></p>
       <div id="pView"></div>
+      <!-- The four email-campaign pages (assets/js/newsletter.js) render into these and keep
+           their state between visits; the shell shows one at a time. -->
+      <div id="pMarketing" class="nlp" hidden>
+        <div class="portal-panel" id="panel-campaigns" hidden></div>
+        <div class="portal-panel" id="panel-nlreports" hidden></div>
+        <div class="portal-panel" id="panel-nltemplates" hidden></div>
+        <div class="portal-panel" id="panel-nllists" hidden></div>
+      </div>
     </main>
   </div>
 </div>
