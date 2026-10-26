@@ -2,7 +2,8 @@
 -- Proving Ground Capital (PGC) — email campaigns sent through Mailchimp.
 -- 2026-10-24
 --
--- NOT APPLIED. Apply after 20261023_pgc_site_content.sql.
+-- APPLIED to production 2026-10-26 (verified: pgc_campaigns, pgc_campaign_templates,
+-- module check includes 'pgc_newsletter'). Order: after 20261023_pgc_site_content.sql.
 --
 -- A copy of ARI's newsletter model (20260923_newsletter.sql,
 -- 20260923_newsletter_templates.sql, 20261020_newsletter_template_newsletter.sql,

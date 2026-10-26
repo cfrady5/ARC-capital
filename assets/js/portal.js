@@ -301,11 +301,17 @@ async function initNewsletter() {
 async function edgeCall(fn, body) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("You’re signed out. Sign in again.");
-  const r = await fetch(supabase.supabaseUrl + "/functions/v1/" + fn, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", apikey: supabase.supabaseKey, Authorization: "Bearer " + session.access_token },
-    body: JSON.stringify(body || {}),
-  });
+  let r;
+  try {
+    r = await fetch(supabase.supabaseUrl + "/functions/v1/" + fn, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: supabase.supabaseKey, Authorization: "Bearer " + session.access_token },
+      body: JSON.stringify(body || {}),
+    });
+  } catch {
+    // A missing function fails its CORS preflight, which the browser reports as "Failed to fetch".
+    throw new Error("Couldn’t reach the sending service (" + fn + "). Either it isn’t deployed yet (see README → Email campaigns) or your connection dropped — try again.");
+  }
   const d = await r.json().catch(() => ({}));
   if (r.status === 404 && !d.error) throw new Error("The sending service (" + fn + ") isn’t deployed yet. An administrator deploys it — see README → Email campaigns.");
   if (!r.ok) throw Object.assign(new Error(d.error || "Request failed (" + r.status + ")"), { checklist: d.checklist });

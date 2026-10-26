@@ -35,7 +35,7 @@ Links are root-relative (`/thesis/`), so the site must be served from a domain r
 |---|---|
 | `portal/` + `assets/js/portal.js` + `assets/css/portal.css` | Employee website editor (see below) |
 | `assets/js/supabase.js`, `assets/js/content.js` | Supabase client (publishable key) and the public-site content layer |
-| `supabase/migrations/` | The three `pgc_*` migrations (applied to production 2026-10-23) |
+| `supabase/migrations/` | The `pgc_*` migrations (all applied to production) |
 | `tests/` | Playwright suites with a Supabase stub, SQL RLS tests (`tests/README.md`) |
 | `tools/dump_content.mjs` | Regenerates the seed migration from the served pages |
 | `docs/ARI-REPO-TASK.md` | The change to make in cfrady5/ARI so the permission can be granted |
@@ -98,11 +98,11 @@ rows directly (the history keeps every version) or unpublishes first.
    (applying it changed nothing for visitors). *Applied 2026-10-23.* Regenerate with
    `node tools/dump_content.mjs` after editing the HTML.
 4. `supabase/migrations/20261024_pgc_newsletter.sql` — email campaigns tables + the
-   `pgc_newsletter` module. **Not applied yet.**
+   `pgc_newsletter` module. *Applied 2026-10-26.*
 5. `supabase/migrations/20261024_pgc_sections_extra.sql` — `pgc_sections.extra` (one-off
    pieces such as the Thesis lens banner) plus the current values of the newly editable
-   bits and the `hq_location` setting. Safe to re-run. **Not applied yet** — see
-   `EDITOR-UPDATE.md`; the editor shows those fields read-only until it has run.
+   bits and the `hq_location` setting. Safe to re-run. *Applied 2026-10-26* (see
+   `EDITOR-UPDATE.md`).
 
 Then: Supabase → Authentication → URL configuration: add `https://pgc.capital`
 and `https://pgc.capital/portal/**` as redirect URLs (magic links land
@@ -135,8 +135,8 @@ submit for review; publishers request changes, send now or schedule, unschedule,
 groups and contacts. Statuses `scheduled` / `sent` and every Mailchimp column are written
 only by the function (service role); sent campaigns are frozen.
 
-**To turn it on** (none of this is done yet):
-1. Apply `supabase/migrations/20261024_pgc_newsletter.sql`.
+**To turn it on:**
+1. Apply `supabase/migrations/20261024_pgc_newsletter.sql`. *Done 2026-10-26.*
 2. In Mailchimp, create (or pick) the PGC audience and verify the From domain.
 3. Supabase → Edge Functions → Secrets: add `PGC_MAILCHIMP_AUDIENCE_ID` (the audience id)
    and optionally `PGC_MAILCHIMP_TAGS`. `MAILCHIMP_API_KEY` / `MAILCHIMP_SERVER_PREFIX`

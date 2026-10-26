@@ -71,16 +71,26 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-function config() {
+function secrets() {
   const key = (Deno.env.get("MAILCHIMP_API_KEY") || "").trim();
   const list = (Deno.env.get("PGC_MAILCHIMP_AUDIENCE_ID") || "").trim();
   let dc = (Deno.env.get("MAILCHIMP_SERVER_PREFIX") || "").trim();
   if (!dc && key.includes("-")) dc = key.slice(key.lastIndexOf("-") + 1);
-  if (!key || !list || !dc) return null;
+  const missing = [!key && "MAILCHIMP_API_KEY", !list && "PGC_MAILCHIMP_AUDIENCE_ID", key && !dc && "MAILCHIMP_SERVER_PREFIX"].filter(Boolean) as string[];
+  return { key, list, dc, missing };
+}
+function config() {
+  const { key, list, dc, missing } = secrets();
+  if (missing.length) return null;
   const tags = (Deno.env.get("PGC_MAILCHIMP_TAGS") || "PGC Website").split(",").map((t) => t.trim()).filter(Boolean);
   return { key, list, dc, tags };
 }
 type Cfg = NonNullable<ReturnType<typeof config>>;
+// Names the secret(s) to set instead of a generic "not connected".
+function notConfigured() {
+  const { missing } = secrets();
+  return json({ error: "Mailchimp isn’t connected yet — set the " + missing.join(", ") + " secret" + (missing.length > 1 ? "s" : "") + " on the pgc-mailchimp function.", missing }, 503);
+}
 
 async function md5Hex(s: string) {
   const buf = await stdCrypto.subtle.digest("MD5", new TextEncoder().encode(s));
@@ -346,7 +356,7 @@ async function syncCampaign(cfg: Cfg, row: Row) {
 async function testSend(req: Request, body: Record<string, unknown>) {
   const who = await callerAccess(req);
   const d = denied(who); if (d) return d;
-  const cfg = config(); if (!cfg) return json({ error: "Mailchimp isn’t connected yet (secrets missing)." }, 503);
+  const cfg = config(); if (!cfg) return notConfigured();
   const row = await loadRow(String(body.campaign_id || "")); if (!row) return json({ error: "Campaign not found." }, 404);
   if (row.status === "sent" || row.status === "scheduled") return json({ error: "This campaign is already " + row.status + "." }, 409);
   if (!(row.subject || "").trim()) return json({ error: "Add a subject line before sending a test." }, 400);
@@ -378,7 +388,7 @@ async function logActivity(actor: string, action: string, detail: Record<string,
 async function send(req: Request, body: Record<string, unknown>) {
   const who = await callerAccess(req);
   const d = denied(who, true); if (d) return d;
-  const cfg = config(); if (!cfg) return json({ error: "Mailchimp isn’t connected yet (secrets missing)." }, 503);
+  const cfg = config(); if (!cfg) return notConfigured();
   const row = await loadRow(String(body.campaign_id || "")); if (!row) return json({ error: "Campaign not found." }, 404);
   if (row.status === "sent") return json({ error: "This campaign has already been sent." }, 409);
   if (row.status === "scheduled") return json({ error: "This campaign is already scheduled. Unschedule it first to change it." }, 409);
@@ -427,7 +437,7 @@ async function send(req: Request, body: Record<string, unknown>) {
 async function unschedule(req: Request, body: Record<string, unknown>) {
   const who = await callerAccess(req);
   const d = denied(who, true); if (d) return d;
-  const cfg = config(); if (!cfg) return json({ error: "Mailchimp isn’t connected yet (secrets missing)." }, 503);
+  const cfg = config(); if (!cfg) return notConfigured();
   const row = await loadRow(String(body.campaign_id || "")); if (!row) return json({ error: "Campaign not found." }, 404);
   if (row.status !== "scheduled" || !row.mailchimp_id) return json({ error: "This campaign isn’t scheduled." }, 409);
   const u = await mc(cfg, "POST", `/campaigns/${row.mailchimp_id}/actions/unschedule`);
@@ -517,7 +527,18 @@ async function reports(req: Request, body: Record<string, unknown>) {
 async function diagnose(req: Request, body: Record<string, unknown>) {
   const who = await callerAccess(req);
   const d = denied(who); if (d) return d;
-  const cfg = config(); if (!cfg) return json({ configured: false });
+  const cfg = config();
+  if (!cfg) {
+    // With the shared API key in place, list the account's audiences so an
+    // admin can pick the ID for PGC_MAILCHIMP_AUDIENCE_ID.
+    const s = secrets();
+    let audiences: { id: string; name: string; members: number }[] = [];
+    if (s.key && s.dc) {
+      const r = await mc({ key: s.key, dc: s.dc, list: "", tags: [] }, "GET", `/lists?count=50&fields=lists.id,lists.name,lists.stats.member_count`);
+      if (r.ok) audiences = ((r.data.lists || []) as Any[]).map((l) => ({ id: String(l.id), name: String(l.name || ""), members: Number(l.stats && l.stats.member_count || 0) }));
+    }
+    return json({ configured: false, missing: s.missing, audiences });
+  }
   const row = body.campaign_id ? await loadRow(String(body.campaign_id)) : null;
   const fromEmail = ((row && row.reply_to) || "innovations@theari.us").trim().toLowerCase();
   const fromDomain = fromEmail.split("@")[1] || "";
@@ -593,7 +614,7 @@ const cleanTags = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map((t) =
 async function createGroup(req: Request, body: Record<string, unknown>) {
   const who = await callerAccess(req);
   const d = denied(who, true); if (d) return d;
-  const cfg = config(); if (!cfg) return json({ error: "Mailchimp isn’t connected yet (secrets missing)." }, 503);
+  const cfg = config(); if (!cfg) return notConfigured();
   const name = String(body.name || "").trim().slice(0, 60);
   if (name.length < 2) return json({ error: "Give the group a name (2 to 60 characters)." }, 400);
   const r = await mc(cfg, "POST", `/lists/${cfg.list}/segments`, { name, static_segment: [] });
@@ -604,7 +625,7 @@ async function createGroup(req: Request, body: Record<string, unknown>) {
 async function deleteGroup(req: Request, body: Record<string, unknown>) {
   const who = await callerAccess(req);
   const d = denied(who, true); if (d) return d;
-  const cfg = config(); if (!cfg) return json({ error: "Mailchimp isn’t connected yet (secrets missing)." }, 503);
+  const cfg = config(); if (!cfg) return notConfigured();
   const id = Number(body.segment_id) > 0 ? Math.floor(Number(body.segment_id)) : 0;
   if (!id) return json({ error: "Which group?" }, 400);
   const r = await mc(cfg, "DELETE", `/lists/${cfg.list}/segments/${id}`);
@@ -617,7 +638,7 @@ async function deleteGroup(req: Request, body: Record<string, unknown>) {
 async function addMember(req: Request, body: Record<string, unknown>) {
   const who = await callerAccess(req);
   const d = denied(who, true); if (d) return d;
-  const cfg = config(); if (!cfg) return json({ error: "Mailchimp isn’t connected yet (secrets missing)." }, 503);
+  const cfg = config(); if (!cfg) return notConfigured();
   const email = String(body.email || "").trim().toLowerCase().slice(0, 254);
   if (!EMAIL_RE.test(email)) return json({ error: "Enter a valid email address." }, 400);
   const first = String(body.first_name || "").trim().slice(0, 120), last = String(body.last_name || "").trim().slice(0, 120);
@@ -637,7 +658,7 @@ async function addMember(req: Request, body: Record<string, unknown>) {
 async function importMembers(req: Request, body: Record<string, unknown>) {
   const who = await callerAccess(req);
   const d = denied(who, true); if (d) return d;
-  const cfg = config(); if (!cfg) return json({ error: "Mailchimp isn’t connected yet (secrets missing)." }, 503);
+  const cfg = config(); if (!cfg) return notConfigured();
   const rows = Array.isArray(body.members) ? (body.members as Any[]).slice(0, 500) : [];
   const status = body.status === "subscribed" ? "subscribed" : "pending";
   const extraTags = cleanTags(body.tags);

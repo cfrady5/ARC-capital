@@ -78,6 +78,11 @@ ARI's Mailchimp composer ported for PGC) against the stub, with the
 
 - **Website contributor without the module:** no Email section, `#/campaigns`
   refused with a notice, direct reads/inserts of `pgc_campaigns` refused.
+- **Tables missing:** every Email page explains which migration to run; no
+  Mailchimp calls.
+- **Function not deployed / audience secret missing:** Send test and Check
+  sending setup say the service can't be reached (not "Failed to fetch"), or
+  name `PGC_MAILCHIMP_AUDIENCE_ID` and list the account's audiences with IDs.
 - **Campaigns contributor:** lands on Campaigns (no page editor), list with
   status pills, can select only their own drafts; New campaign → the canvas
   composer with the PGC block tiles (no post/event), adds a heading and a text

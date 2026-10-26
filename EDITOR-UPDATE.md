@@ -21,7 +21,7 @@ hard-coded pieces editable.
 1. Deploy the files. This is safe before step 2: until the column exists, the editor
    shows the lens-banner fields read-only and saves everything else normally.
 2. Run the SQL in the Supabase SQL editor (project “ARI Main Page”). It can be run
-   more than once safely.
+   more than once safely. *Done 2026-10-26.*
 3. Hard-refresh `/portal/`.
 
 ## Newly editable

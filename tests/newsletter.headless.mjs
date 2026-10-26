@@ -44,6 +44,10 @@ async function session(name, cfg) {
     const body = JSON.parse(r.request().postData() || "{}");
     calls.push(body);
     const reply = (status, obj) => r.fulfill({ status, contentType: "application/json", body: JSON.stringify(obj) });
+    // "absent": the function isn't deployed, so the browser sees a network failure.
+    if (cfg.fn === "absent") return r.abort("failed");
+    if (cfg.fn === "noAudience" && body.action === "diagnose") return reply(200, { configured: false, missing: ["PGC_MAILCHIMP_AUDIENCE_ID"], audiences: [{ id: "a1b2c3", name: "PGC Investors", members: 42 }] });
+    if (cfg.fn === "noAudience" && !["stats", "segments", "reports", "members", "refresh"].includes(body.action)) return reply(503, { error: "Mailchimp isn’t connected yet — set the PGC_MAILCHIMP_AUDIENCE_ID secret on the pgc-mailchimp function.", missing: ["PGC_MAILCHIMP_AUDIENCE_ID"] });
     const rows = await p.evaluate(() => window.__TABLES.pgc_campaigns);
     const row = rows.find((x) => x.id === body.campaign_id);
     const publisher = cfg.role === "admin" || (cfg.modules || {}).pgc_newsletter === "publisher";
@@ -103,6 +107,23 @@ const waitEditor = (p) => p.waitForSelector("#nle", { timeout: 10000 }).then(() 
   check(r, "noMailchimpCalls", calls.length === 0, calls.map((c) => c.action));
   await p.evaluate(() => { location.hash = "#/nllists"; }); await p.waitForTimeout(600);
   check(r, "everyEmailPageExplains", /haven’t been created yet/.test(await text(p, "#panel-nllists")));
+  await ctx.close();
+}
+
+// ---------------- 1c. Sending function not deployed, then deployed without the audience secret ----------------
+for (const fn of ["absent", "noAudience"]) {
+  const r = {}; results["fn_" + fn] = r;
+  const { ctx, p } = await session("fn_" + fn, { role: "admin", fn, hash: "#/campaigns" });
+  await p.waitForSelector("#panel-campaigns .nlp-row", { timeout: 10000 }); await p.waitForTimeout(400);
+  await p.evaluate(() => [...document.querySelectorAll("#panel-campaigns .nlp-row")].find((x) => /Investor note/.test(x.textContent)).click()); await waitEditor(p);
+  await p.click("#nleSendTest");
+  await p.waitForSelector("#nl_test_to", { timeout: 5000 });
+  await clickText(p, ".nle-modal", "Send test"); await p.waitForTimeout(600);
+  const m = await text(p, "#nleTestMsg");
+  check(r, "testSendExplains", fn === "absent" ? /Couldn’t reach the sending service \(pgc-mailchimp\)/.test(m) && !/Failed to fetch/.test(m) : /PGC_MAILCHIMP_AUDIENCE_ID/.test(m), m);
+  await clickText(p, ".nle-modal", "Check sending setup"); await p.waitForTimeout(600);
+  const d = await text(p, "#nlpDiag");
+  check(r, "diagnoseExplains", fn === "absent" ? /Couldn’t reach the sending service/.test(d) : /PGC_MAILCHIMP_AUDIENCE_ID/.test(d) && /PGC Investors/.test(d) && /a1b2c3/.test(d), d.slice(0, 200));
   await ctx.close();
 }
 

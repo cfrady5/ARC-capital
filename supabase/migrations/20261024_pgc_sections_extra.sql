@@ -2,6 +2,7 @@
 -- Adds pgc_sections.extra for one-off pieces of a section (the Thesis
 -- "National Security" lens banner) and records the values the live site
 -- already shows, so the database matches the pages exactly.
+-- APPLIED to production 2026-10-26 (verified: pgc_sections.extra, hq_location).
 -- Safe to run more than once. Nullable on purpose: pgc_restore_revision()
 -- re-inserts older snapshots that have no "extra" key.
 

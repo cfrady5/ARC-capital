@@ -305,8 +305,18 @@ export function initMarketing({ supabase, roots, access, edgeCall, confirmDialog
     box.innerHTML = "";
     if (!D) return;
     if (D.loading) { box.append(el("p", { class: "pform-help" }, "Asking Mailchimp…")); return; }
-    if (D.error) { box.append(el("p", { class: "portal-msg is-error" }, D.error)); return; }
-    if (D.configured === false) { box.append(el("p", { class: "pform-help" }, "Mailchimp isn’t connected yet (secrets missing).")); return; }
+    if (D.error) { box.append(el("p", { class: "nle-msg is-error" }, D.error)); return; }
+    if (D.configured === false) {
+      const miss = D.missing || [];
+      box.append(el("p", { class: "nle-msg is-error" }, "Mailchimp isn’t connected yet" + (miss.length ? " — set the " + miss.join(", ") + " secret" + (miss.length > 1 ? "s" : "") + " on the pgc-mailchimp function." : ".")));
+      if ((D.audiences || []).length) {
+        box.append(el("p", { class: "pform-help" }, "Audiences in this Mailchimp account — use the ID of the one PGC should send to:"));
+        const ul = el("ul", { class: "nlp-diag" });
+        D.audiences.forEach((a) => ul.append(el("li", { class: "nlp-diag-info" }, el("b", null, a.name), el("span", null, "ID " + a.id + " · " + a.members + " contacts"))));
+        box.append(ul);
+      }
+      return;
+    }
     const rows = [];
     const f = D.from || {};
     if (!f.known || !f.verified) rows.push(["error", "From address " + f.email + " is not verified in Mailchimp.", "Mailchimp accepts the request but does not deliver tests or campaigns from an unverified address. In Mailchimp go to Website → Domains, add " + f.domain + ", click the confirmation link it emails to an address at that domain, then send the test again."]);
