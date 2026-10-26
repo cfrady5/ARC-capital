@@ -642,7 +642,7 @@ async function renderTeamEditor() {
         catch (e) { notice(errText(e), true); }
       } }, "Start from the live page"))));
   }
-  const list = el("div"); editor.append(list);
+  const list = el("div", { class: "p-stack" }); editor.append(list);
   const addRow = el("div", { class: "p-add" },
     el("button", { type: "button", class: "btn btn-ghost", onclick: () => { state.team.push({ id: null, name: "", role: "", bio: "", photo_url: "", photo_alt: "", linkedin_url: "", email: "", team_group: "bench", sort_order: (state.team.length + 1) * 10, published: false, review_state: "draft", _new: true }); markDirty(); renderList(); } }, "Add person"));
   editor.append(addRow);
@@ -652,7 +652,9 @@ async function renderTeamEditor() {
     ["principals", "bench"].forEach((g) => {
       const rows = state.team.filter((p) => p.team_group === g);
       if (!rows.length) return;
-      list.append(el("p", { class: "p-sidebar-h", text: g === "principals" ? "Principals" : "Execution bench" }));
+      const cards = el("div", { class: "p-sections" });
+      list.append(el("section", { class: "p-team-group", "aria-label": g === "principals" ? "Principals" : "Execution bench" },
+        el("h2", { class: "p-list-h" }, g === "principals" ? "Principals" : "Execution bench", el("span", { class: "p-count", text: String(rows.length) })), cards));
       rows.forEach((p) => {
         const idx = state.team.indexOf(p);
         const locked = p.published && !access.canPublish;
@@ -664,7 +666,7 @@ async function renderTeamEditor() {
             if (p.id) { const { error } = await supabase.from("pgc_team").delete().eq("id", p.id); if (error) { notice("Could not remove: " + errText(error), true); return; } }
             state.team.splice(idx, 1); markDirty(); renderList(); schedulePreview();
           } }, "Remove") : null);
-        list.append(card(p.name || "New person", p.role || "", [
+        cards.append(card(p.name || "New person", p.role || "", [
           field("Name", "input", p.name || "", (v) => (p.name = v), { readonly: locked }),
           field("Role", "input", p.role || "", (v) => (p.role = v), { readonly: locked }),
           field("Group", "select", p.team_group, (v) => (p.team_group = v), { readonly: locked, options: [["principals", "Principals"], ["bench", "Execution bench"]] }),
@@ -736,7 +738,7 @@ async function renderHistory(filterIds) {
         $("#pView").innerHTML = ""; renderHistory(filterIds);
       } }, r.operation === "restore" ? "Restore again" : "Undo to this") : el("span", { class: "p-sub", text: r.operation === "delete" ? "Removed rows can be recreated from an earlier version" : "" }))));
   });
-  table.append(tb); view.append(table);
+  table.append(tb); view.append(el("div", { class: "p-table-wrap" }, table));
 }
 
 /* ------------------------------------------------------------- actions */
@@ -890,7 +892,8 @@ function card(title, sub, fields, opts) {
   fields.filter(Boolean).forEach((f) => body.append(f));
   const toggle = el("button", { type: "button", class: "p-toggle", "aria-expanded": String(!!opts.open), "aria-controls": id, text: title,
     onclick: () => { body.hidden = !body.hidden; toggle.setAttribute("aria-expanded", String(!body.hidden)); } });
-  const head = el("div", { class: "p-card-h" }, el("h2", null, toggle), sub ? el("span", { class: "p-sub", text: sub }) : null, opts.state ? pill(opts.state) : null);
+  // Title over subtitle on the left; status and tools keep their size on the right.
+  const head = el("div", { class: "p-card-h" }, el("div", { class: "p-card-title" }, el("h2", null, toggle), sub ? el("span", { class: "p-sub", text: sub }) : null), opts.state ? pill(opts.state) : null);
   if (opts.tools) head.append(opts.tools);
   const box = el("div", { class: "p-card" }, head, body);
   if (opts.focusKey) {

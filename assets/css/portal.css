@@ -127,11 +127,18 @@ input[readonly], textarea[readonly], input:disabled, textarea:disabled, select:d
 .p-list-h { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 0.74rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
 .p-count { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(255,255,255,0.06); color: var(--text-body); font-size: 0.72rem; letter-spacing: 0; }
 .p-sections { display: grid; gap: 10px; }
+/* Team: one labelled group per team section, the same rhythm as the page editor's list. */
+.p-stack { display: grid; gap: 28px; }
+.p-team-group { display: grid; gap: 12px; }
 .p-card { background: var(--ink-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
-.p-card-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 32px; }
-.p-card-h h2 { font-size: 1rem; line-height: 1.35; margin: 0; flex: 1; min-width: 0; }
-.p-card-h .p-sub { color: var(--text-dim); font-size: 0.8rem; white-space: nowrap; }
-.p-card-tools { display: flex; gap: 6px; }
+/* Card header: title with its subtitle underneath, then the status pill and the tools,
+   which keep their size so a long name or hint never pushes them onto a second line. */
+.p-card-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; min-height: 36px; }
+.p-card-title { flex: 1 1 220px; min-width: 0; display: grid; gap: 2px; }
+.p-card-title h2 { font-size: 1rem; line-height: 1.35; margin: 0; overflow-wrap: anywhere; }
+.p-card-title .p-sub { color: var(--text-dim); font-size: 0.8rem; line-height: 1.4; }
+.p-card-h > .p-pill { flex: none; }
+.p-card-tools { flex: none; display: flex; gap: 6px; margin-left: auto; }
 .p-icon-btn {
   display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 30px;
   background: rgba(255,255,255,0.05); border: 1px solid var(--hairline); color: var(--text-body); border-radius: 8px;
@@ -184,10 +191,16 @@ input[readonly], textarea[readonly], input:disabled, textarea:disabled, select:d
 .p-setup code { font-size: 0.85em; color: var(--mint); background: rgba(60, 219, 192, 0.08); padding: 1px 6px; border-radius: 4px; overflow-wrap: anywhere; }
 
 /* ---------- lists (team, settings, history) ---------- */
+/* Wide tables scroll inside their own box on narrow screens instead of widening the page. */
+.p-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .p-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-.p-table th, .p-table td { text-align: left; padding: 10px 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
-.p-table th { font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-weight: 500; }
+.p-table-wrap .p-table { min-width: 560px; }
+.p-table th, .p-table td { text-align: left; padding: 12px 12px; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+.p-table th { font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-weight: 500; padding-top: 0; }
+.p-table th:first-child, .p-table td:first-child { padding-left: 0; }
+.p-table th:last-child, .p-table td:last-child { padding-right: 0; text-align: right; }
 .p-table td.p-nowrap { white-space: nowrap; }
+.p-table .p-sub { color: var(--text-dim); }
 .p-empty { color: var(--text-dim); padding: 18px 0; }
 
 /* ---------- responsive ---------- */
@@ -198,7 +211,6 @@ input[readonly], textarea[readonly], input:disabled, textarea:disabled, select:d
 @media (max-width: 640px) {
   .p-card-body, .p-item { grid-template-columns: minmax(0, 1fr); }
   .p-card { padding: 12px 14px; }
-  .p-card-h .p-sub { display: none; }
 }
 @media (max-width: 820px) {
   .p-nav-toggle {
@@ -208,7 +220,11 @@ input[readonly], textarea[readonly], input:disabled, textarea:disabled, select:d
   .p-shell { grid-template-columns: 1fr; }
   .p-sidebar { display: none; border-right: 0; border-bottom: 1px solid var(--hairline); }
   .p-sidebar.is-open { display: block; }
-  .p-topbar-right { width: 100%; }
+  /* Phone/tablet top bar: logo and Menu on one row, the account line on the next. */
+  .p-topbar { flex-wrap: wrap; gap: 10px 16px; }
+  .p-brand-label { display: none; }
+  .p-nav-toggle { margin-left: auto; }
+  .p-topbar-right { width: 100%; margin-left: 0; gap: 8px 14px; padding-top: 10px; border-top: 1px solid var(--hairline); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .p-nav-item, .p-icon-btn, .btn { transition: background-color 0.15s, color 0.15s, border-color 0.15s; }

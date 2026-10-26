@@ -62,7 +62,8 @@ node tests/public-content.headless.mjs
   live notice, Request changes on a submitted draft, Unpublish, Remove section,
   Undo from the history (restores the old snapshot and logs a `restore`),
   headshot upload goes to `pgc-media` and fills the URL, team and settings
-  publish, phone width without sideways scroll and a working menu toggle.
+  publish, team cards spaced apart with no title running into its status pill, phone
+  width without sideways scroll (page and change history) and a working menu toggle.
 - **Administrator:** implicit publisher; "Start from the live page" creates
   draft rows from the served markup.
 

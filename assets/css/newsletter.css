@@ -584,3 +584,65 @@
 .nlp .bb-editor .portal-field {margin-bottom: 0.5rem; }
 .nlp .pe-pull > .pform-help {margin: 0 0 8px; }
 .nlp .pe-embed-acts a.portal-mini {text-decoration: none; }
+
+/* ==========================================================================
+   PGC portal alignment. The rules above came over from ARI's stylesheet; these
+   put the email pages on the website editor's scale (portal.css): the same page
+   head, small uppercase section labels, 12px card radius, 16/24px rhythm, and
+   mint (not dark green) for text on dark teal so it stays readable.
+   ========================================================================== */
+/* Page head: matches .p-head / .p-head h1 / .p-meta. */
+.nlp .ppage-head { align-items: center; gap: 16px 24px; margin: 0 0 24px; }
+.nlp .ppage-head > div:first-child { min-width: 0; flex: 1 1 320px; }
+.nlp .ppage-title { font-size: clamp(1.6rem, 2.4vw, 2rem); font-weight: 400; letter-spacing: -0.025em; line-height: 1.15; color: var(--white); }
+.nlp .ppage-desc { margin: 8px 0 0; font-size: 0.86rem; line-height: 1.5; color: var(--text-dim, var(--pa-text-3)); max-width: 68ch; }
+.nlp .ppage-actions { margin-left: auto; gap: 10px; }
+.nlp .ppage-actions:empty { display: none; }
+
+/* Section labels: the editor's "SECTIONS" / "LIVE PREVIEW" style. */
+.nlp .psection-title, .nlp .pdash-card-title { font-size: 0.74rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1.4; color: var(--text-dim, var(--pa-text-3)); margin: 32px 0 12px; }
+.nlp .psection-title.nlp-first { margin-top: 0; }
+.nlp .pdash-card-title { margin: 0 0 14px; }
+.nlp .nlp-report-head .psection-title { font-size: 1.2rem; font-weight: 400; letter-spacing: -0.01em; text-transform: none; color: var(--white); margin: 0 0 4px; }
+.nlp .nlp-report-head .portal-sub { margin: 0; font-size: 0.86rem; color: var(--pa-text-2); }
+.nlp .portal-link--inline { color: var(--mint); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Cards and stat tiles. */
+.nlp .pdash-card { min-width: 0; padding: 18px 20px; border: 1px solid var(--pa-border); border-radius: 12px; background: var(--pa-surface); }
+.nlp .pnl-grid { display: grid; gap: 12px; }
+.nlp .nlp-tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: 0 0 24px; }
+.nlp .pnl-stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 14px 16px; border: 1px solid var(--pa-border); border-radius: 12px; background: var(--pa-surface); }
+.nlp .pnl-stat-value { font-size: 1.6rem; line-height: 1.1; color: var(--white); font-variant-numeric: tabular-nums; }
+.nlp .pnl-stat-label { font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim, var(--pa-text-3)); }
+.nlp .pnl-stat-sub { font-size: 0.8rem; color: var(--pa-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nlp .nlp-reports-grid { gap: 16px; }
+.nlp .pdash-shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.nlp .nlp-reports-actions { margin-top: 16px; }
+.nlp .nlp-groups { margin: 0; }
+.nlp .nlp-contacts, .nlp .pdash-card + .nlp-contacts { margin: 16px 0 0; }
+.nlp .nlp-groups-head { margin: 0 0 14px; }
+.nlp .nlp-group-grid { gap: 12px; margin: 0 0 12px; }
+.nlp .nlp-tpl-grid { gap: 16px; }
+.nlp .nlp-tpl-card { gap: 8px; padding: 16px 18px; border-radius: 12px; }
+.nlp .nlp-tpl-card .nlp-add { margin-top: 10px; }
+.nlp .nlp-list { gap: 10px; }
+.nlp .nlp-selbar { margin: 0 0 12px; }
+.nlp .nlp-filters { margin-bottom: 16px; }
+
+/* Small buttons: same box as the editor's .p-icon-btn; links styled as buttons lose the underline. */
+.nlp .portal-mini { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 8px; border-color: var(--pa-border-strong); color: var(--pa-text-2); line-height: 1.2; text-decoration: none; }
+.nlp .portal-mini:hover { color: var(--white); border-color: var(--line-strong, var(--pa-border-strong)); }
+.nlp .portal-mini--go { color: var(--mint); border-color: var(--line-strong, rgba(60, 219, 192, 0.45)); }
+.nlp .portal-mini--go:hover { color: var(--ink); background: var(--mint); border-color: var(--mint); }
+.nlp .portal-mini--danger, .nlp .nlp-danger { color: #ffb4a8; border-color: rgba(255, 180, 168, 0.45); }
+.nlp .portal-mini--danger:hover, .nlp .nlp-danger:hover { color: #fff; background: rgba(255, 120, 100, 0.12); border-color: #ffb4a8; }
+.nlp .nlp-add { gap: 8px; }
+.nlp .btn-secondary { background: transparent; color: var(--mint); border-color: var(--mint); }
+.nlp .btn-secondary:hover { color: var(--ink); background: var(--mint); border-color: var(--mint); transform: none; }
+
+/* Text that used ARI's dark accent: mint keeps it readable on dark teal. */
+.nlp .portal-msg, .nlp .req, .nlp .pstatus--new, .nlp .pstatus--team, .nlp .nlp-group.is-on .nlp-group-name { color: var(--mint); }
+.nlp .nlp-group.is-on { border-color: var(--line-strong, rgba(60, 219, 192, 0.45)); }
+/* Report tables scroll inside their card on narrow screens instead of widening the page. */
+.nlp .pdash-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.nlp details.pdash-card { overflow: visible; }

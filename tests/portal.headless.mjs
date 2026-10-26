@@ -25,6 +25,7 @@ const seed = {
   ],
   pgc_team: [
     { id: "tm-1", name: "Jeron Peoples", role: "President & Chief Executive Officer", bio: "Live bio.", photo_url: "/assets/img/team-jeron-peoples.webp", linkedin_url: "https://www.linkedin.com/in/x/", email: "j@theari.us", team_group: "principals", sort_order: 10, published: true, review_state: "draft" },
+    { id: "tm-3", name: "Stu Dillon", role: "Head of Portfolio & Counsel", bio: "Live bio.", photo_url: "", team_group: "principals", sort_order: 20, published: true, review_state: "draft" },
     { id: "tm-2", name: "Draft Person", role: "Associate", bio: "Draft bio.", photo_url: "", team_group: "bench", sort_order: 10, published: false, review_state: "draft" },
   ],
   pgc_settings: [{ id: "st-1", key: "footer_tagline", label: "Footer tagline", value: "Live tagline", published: true, review_state: "draft" }],
@@ -308,6 +309,14 @@ const noticeText = (p) => text(p, "#pNotice");
   await p.waitForSelector(".p-actions", { timeout: 8000 });
   const team = await p.evaluate(() => window.__TABLES.pgc_team.map((t) => [t.name, t.published, t.photo_url]));
   check(r, "teamPublished", team.every((t) => t[1] === true) && /head-shot\.png$/.test(team.find((t) => t[0] === "Draft Person")[2]), team);
+  // Layout: team cards sit apart (not touching), and no card title runs into its status pill.
+  const tl = await p.evaluate(() => {
+    const cards = [...document.querySelectorAll(".p-team-group .p-card")];
+    const gaps = cards.slice(1).map((c, i) => (c.parentElement === cards[i].parentElement ? Math.round(c.getBoundingClientRect().top - cards[i].getBoundingClientRect().bottom) : null)).filter((g) => g !== null);
+    const overlaps = [...document.querySelectorAll(".p-card-h")].filter((h) => { const t = h.querySelector(".p-card-title"), pl = h.querySelector(".p-pill"); if (!t || !pl) return false; const a = t.getBoundingClientRect(), b = pl.getBoundingClientRect(); return a.right > b.left + 1 && a.bottom > b.top && b.bottom > a.top; }).length;
+    return { groups: document.querySelectorAll(".p-team-group").length, gaps, overlaps };
+  });
+  check(r, "teamLayout", tl.groups >= 1 && tl.gaps.length > 0 && tl.gaps.every((g) => g >= 8) && tl.overlaps === 0, tl);
   // Settings
   await p.evaluate(() => { location.hash = "#/settings"; }); await p.waitForSelector(".p-actions", { timeout: 8000 });
   check(r, "settingsEditable", await setField(p, "Value", "New tagline"));
@@ -322,6 +331,9 @@ const noticeText = (p) => text(p, "#pNotice");
   await p.click("#pNavToggle");
   mobile.open = await p.evaluate(() => document.getElementById("pSidebar").classList.contains("is-open") && document.getElementById("pNavToggle").getAttribute("aria-expanded") === "true");
   check(r, "mobile", mobile.overflow && mobile.toggle && mobile.open, mobile);
+  // The history table scrolls inside its own box instead of widening the page.
+  await p.evaluate(() => { location.hash = "#/history"; }); await p.waitForSelector(".p-table", { timeout: 8000 });
+  check(r, "mobileHistoryFits", await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && !!document.querySelector(".p-table-wrap .p-table")));
   await p.screenshot({ path: path.join(OUT, "portal-publisher-mobile.png") });
   await ctx.close();
 }

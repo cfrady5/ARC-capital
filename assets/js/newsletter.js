@@ -101,8 +101,8 @@ export function initMarketing({ supabase, roots, access, edgeCall, confirmDialog
     headActions.innerHTML = "";
     if (st.panel === "campaigns" && st.view === "list") headActions.append(el("button", { type: "button", class: "btn btn-primary", id: "nlpNew", onclick: () => newCampaign() }, "New campaign"));
     if (st.panel === "nltemplates" && st.view === "tlist") headActions.append(el("button", { type: "button", class: "btn btn-primary", id: "nlpNewTemplate", onclick: () => editTemplate(null) }, "New template"));
-    if (st.panel === "nlreports") headActions.append(el("button", { type: "button", class: "portal-mini", id: "nlpReportsRefresh", onclick: () => { st.reports = null; openReports(); } }, "Refresh"));
-    if (st.panel === "nllists") { headActions.append(el("button", { type: "button", class: "portal-mini", id: "nlpListsRefresh", onclick: () => loadLists(true) }, "Refresh")); if (canPublish) headActions.append(el("button", { type: "button", class: "btn btn-secondary", id: "nlpImportList", onclick: () => { st.lists.importing = !st.lists.importing; st.lists.adding = false; render(); } }, "Upload a list"), el("button", { type: "button", class: "btn btn-primary", id: "nlpAddContact", onclick: () => { st.lists.adding = !st.lists.adding; st.lists.importing = false; render(); } }, "Add contact")); }
+    if (st.panel === "nlreports") headActions.append(el("button", { type: "button", class: "btn btn-ghost", id: "nlpReportsRefresh", onclick: () => { st.reports = null; openReports(); } }, "Refresh"));
+    if (st.panel === "nllists") { headActions.append(el("button", { type: "button", class: "btn btn-ghost", id: "nlpListsRefresh", onclick: () => loadLists(true) }, "Refresh")); if (canPublish) headActions.append(el("button", { type: "button", class: "btn btn-ghost", id: "nlpImportList", onclick: () => { st.lists.importing = !st.lists.importing; st.lists.adding = false; render(); } }, "Upload a list"), el("button", { type: "button", class: "btn btn-primary", id: "nlpAddContact", onclick: () => { st.lists.adding = !st.lists.adding; st.lists.importing = false; render(); } }, "Add contact")); }
   }
 
   /* ---------- data ---------- */
