@@ -169,7 +169,7 @@ function wireSignin() {
     if (!(await ensureClean())) return;
     await supabase.auth.signOut();
     state.access = null; state.page = null; state.sections = [];
-    NL.page = null; NL.loading = null; NL_VIEWS.forEach((v) => { const p = $("#panel-" + v); if (p) p.innerHTML = ""; });
+    NL.page = null; NL.loading = null; NL.missing = false; NL_VIEWS.forEach((v) => { const p = $("#panel-" + v); if (p) p.innerHTML = ""; });
     location.hash = "";
     boot();
   }));
@@ -258,8 +258,11 @@ async function onRoute() {
     const btn = $('.p-nav-item[data-view="' + r.view + '"]'); if (btn) btn.setAttribute("aria-current", "page");
     NL_VIEWS.forEach((v) => { const p = $("#panel-" + v); if (p) p.hidden = v !== r.view; });
     const opts = NL.pendingOpts || {}; NL.pendingOpts = null;
-    try { await initNewsletter(); if (NL.page) await NL.page.show(r.view, opts); }
-    catch (e) { notice("The email campaigns pages could not load: " + errText(e), true); }
+    try {
+      await initNewsletter();
+      if (NL.missing) renderEmailSetup($("#panel-" + r.view));
+      else if (NL.page) await NL.page.show(r.view, opts);
+    } catch (e) { notice("The email campaigns pages could not load: " + errText(e), true); }
   } else if (r.view === "page") {
     const btn = $('.p-nav-item[data-slug="' + r.slug + '"]'); if (btn) btn.setAttribute("aria-current", "page");
     await renderPageEditor(r.slug);
@@ -273,11 +276,13 @@ async function onRoute() {
 }
 
 /* ------------------------------------------------- email campaigns (Mailchimp) */
-const NL = { page: null, pendingOpts: null, loading: null };
+const NL = { page: null, pendingOpts: null, loading: null, missing: false };
 async function initNewsletter() {
-  if (NL.page || !state.access || !state.access.canEditNl) return;
+  if (NL.page || NL.missing || !state.access || !state.access.canEditNl) return;
   if (NL.loading) return NL.loading;
   NL.loading = (async () => {
+    const probe = await supabase.from("pgc_campaigns").select("id").limit(1);
+    if (probe.error && missingTable(probe.error)) { NL.missing = true; return; }
     const mod = await import("./newsletter.js");
     const access = state.access;
     NL.page = mod.initMarketing({
@@ -302,8 +307,28 @@ async function edgeCall(fn, body) {
     body: JSON.stringify(body || {}),
   });
   const d = await r.json().catch(() => ({}));
+  if (r.status === 404 && !d.error) throw new Error("The sending service (" + fn + ") isn’t deployed yet. An administrator deploys it — see README → Email campaigns.");
   if (!r.ok) throw Object.assign(new Error(d.error || "Request failed (" + r.status + ")"), { checklist: d.checklist });
   return d;
+}
+
+/* The Email pages need the 20261024_pgc_newsletter.sql tables. Until they exist,
+   say so in plain words instead of showing PostgREST's schema-cache error. */
+const missingTable = (e) => !!e && (/PGRST205|42P01/.test(String(e.code || "")) || /schema cache|does not exist/i.test(String(e.message || "")));
+function renderEmailSetup(panel) {
+  panel.replaceChildren(
+    el("div", { class: "p-head" }, el("div", { class: "p-head-main" }, el("h1", { text: "Email campaigns" }),
+      el("p", { class: "p-meta" }, el("span", { class: "p-pill p-pill--draft", text: "Not set up" })))),
+    el("div", { class: "p-card p-setup" },
+      el("h2", { text: "The campaign tables haven’t been created yet" }),
+      el("p", null, "Nothing is wrong with your account: the database for email campaigns hasn’t been switched on. Once it has, this page lists your campaigns."),
+      el("ol", null,
+        el("li", null, "Apply ", el("code", { text: "supabase/migrations/20261024_pgc_newsletter.sql" }), " in Supabase (SQL editor, or the migrations tool)."),
+        el("li", null, "Create or pick the PGC audience in Mailchimp and verify the From domain."),
+        el("li", null, "Add the ", el("code", { text: "PGC_MAILCHIMP_AUDIENCE_ID" }), " secret under Edge Functions → Secrets."),
+        el("li", null, "Deploy the ", el("code", { text: "pgc-mailchimp" }), " function."),
+        el("li", null, "Reload this page.")),
+      el("p", { class: "p-hint", text: "The same steps are in the repository README under “Email campaigns (Mailchimp) in the portal”." })));
 }
 /* An accessible confirm dialog: resolves with the chosen button's value (false / escValue on Escape). */
 let pendingConfirm = null;
@@ -348,8 +373,12 @@ function renderNav() {
   const defs = PAGE_DEFS.map((d) => Object.assign({}, d, state.pages.find((p) => p.slug === d.slug) || {}));
   state.pages.filter((p) => !PAGE_DEFS.some((d) => d.slug === p.slug)).forEach((p) => defs.push(p));
   defs.forEach((d) => {
-    const b = el("button", { type: "button", class: "p-nav-item", "data-slug": d.slug, onclick: () => (location.hash = "#/page/" + d.slug) },
-      el("span", { text: d.nav_label || d.title || d.slug }), d.id ? pill(d) : el("span", { class: "p-pill p-pill--draft", text: "Not set up" }));
+    // A status dot keeps every label on one line; the page's own header shows the full pill.
+    const st = d.id ? stateOf(d) : "none";
+    const label = d.id ? STATE_LABEL[st] : "Not set up";
+    const b = el("button", { type: "button", class: "p-nav-item", "data-slug": d.slug, title: label, onclick: () => (location.hash = "#/page/" + d.slug) },
+      el("span", { class: "p-nav-label", text: d.nav_label || d.title || d.slug }),
+      el("span", { class: "p-dot p-dot--" + st, "aria-hidden": "true" }), el("span", { class: "p-sr", text: label }));
     ul.append(el("li", null, b));
   });
   document.querySelectorAll("#pOtherNav .p-nav-item, #pEmailNav .p-nav-item").forEach((b) => (b.onclick = () => { if (location.hash === "#/" + b.dataset.view) onRoute(); else location.hash = "#/" + b.dataset.view; }));
@@ -385,7 +414,11 @@ async function renderPageEditor(slug) {
   const liveLocked = page.published && !access.canPublish;   // ARI rule: contributors cannot touch live rows
 
   const head = el("div", { class: "p-head" },
-    el("div", null, el("h1", { text: page.nav_label || def.nav_label || page.title }), el("p", { class: "p-meta" }, def.path + " · ", pill(page), page.updated_by ? " · last edited by " + page.updated_by + " " + fmtTime(page.updated_at) : "")),
+    el("div", { class: "p-head-main" },
+      el("h1", { text: page.nav_label || def.nav_label || page.title }),
+      el("p", { class: "p-meta" }, pill(page),
+        el("a", { href: def.path, target: "_blank", rel: "noopener", class: "p-meta-link", text: "pgc.capital" + def.path }),
+        page.updated_by ? el("span", { text: "Edited " + fmtTime(page.updated_at) + " by " + page.updated_by }) : null)),
     actionBar());
   view.append(head);
   if (liveLocked) notice("This page is live. Contributors cannot change published content — a publisher can, or can unpublish it so you can edit a draft.");
@@ -397,14 +430,15 @@ async function renderPageEditor(slug) {
   view.append(layout);
 
   // Page-level fields
-  editor.append(card("Page", null, [
+  editor.append(card("Page settings", "Browser title, menu label, search description", [
     field("Browser title", "input", page.title || "", (v) => (page.title = v), { wide: true, readonly: liveLocked }),
     field("Menu label", "input", page.nav_label || "", (v) => (page.nav_label = v), { readonly: liveLocked }),
     field("Search description", "textarea", page.meta_description || "", (v) => (page.meta_description = v), { wide: true, readonly: liveLocked, hint: "Shown by search engines under the page title. About 150 characters." }),
   ], { open: false }));
 
+  const listHead = el("h2", { class: "p-list-h" });
   const list = el("div", { class: "p-sections" });
-  editor.append(list);
+  editor.append(listHead, list);
   const addRow = el("div", { class: "p-add" });
   if (!liveLocked) {
     const sel = el("select", { "aria-label": "Kind of section to add" }, ...Object.entries(KINDS).filter(([k]) => k !== "hero").map(([k, v]) => el("option", { value: k, text: v })));
@@ -414,6 +448,7 @@ async function renderPageEditor(slug) {
 
   function drawSections() {
     list.innerHTML = "";
+    listHead.replaceChildren("Sections", el("span", { class: "p-count", text: String(state.sections.length) }));
     state.sections.forEach((s, i) => list.append(sectionCard(s, i, liveLocked, drawSections)));
   }
   drawSections();
@@ -475,7 +510,8 @@ function fillFromBaseline(row, base, schema) {
 
 function sectionCard(s, i, locked, redraw) {
   const schema = schemaFor(state.page.slug, s);
-  const preview = s.heading || s.eyebrow || "";
+  // The white part of a headline often ends mid-phrase ("…access —", "Patient capital,"): trim that for the title.
+  const preview = String(s.heading || s.eyebrow || "").replace(/[\s,;:—–-]+$/, "");
   const title = schema.name + (preview && preview !== schema.name ? " — " + preview : "");
   const tools = el("div", { class: "p-card-tools" },
     el("button", { type: "button", class: "p-icon-btn", "aria-label": "Move section up", disabled: locked || i === 0, onclick: () => { move(state.sections, i, -1); markDirty(); redraw(); } }, "↑"),

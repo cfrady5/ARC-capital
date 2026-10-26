@@ -80,6 +80,8 @@ function builder(table) {
       let result;
       try {
         if (window.__FAIL_TABLES && window.__FAIL_TABLES.includes(table)) throw new Error("FetchError: network down");
+        // A migration that hasn't been applied: PostgREST answers like this.
+        if (window.__MISSING_TABLES && window.__MISSING_TABLES.includes(table)) throw Object.assign(new Error("Could not find the table 'public." + table + "' in the schema cache"), { code: "PGRST205" });
         if (st.op === "select") {
           const out = apply();
           result = { data: st.single ? out[0] || null : out, error: null };

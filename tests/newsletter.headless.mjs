@@ -34,7 +34,7 @@ async function session(name, cfg) {
   const p = await ctx.newPage();
   p.on("pageerror", (e) => errors.push(name + ": " + String(e).slice(0, 300)));
   p.on("console", (m) => { if (m.type() === "error" && !/ERR_|net::|Failed to load resource/.test(m.text())) errors.push(name + " console: " + m.text().slice(0, 200)); });
-  await p.addInitScript((c) => { window.__SEED = c.seed; window.__ROLE = c.role || "employee"; window.__ROLE_EMAIL = c.email || "test@theari.us"; window.__ROLE_NAME = "Terry Tester"; window.__MODULES = c.modules || {}; }, Object.assign({ seed: JSON.parse(JSON.stringify(seed)) }, cfg));
+  await p.addInitScript((c) => { window.__SEED = c.seed; window.__ROLE = c.role || "employee"; window.__ROLE_EMAIL = c.email || "test@theari.us"; window.__ROLE_NAME = "Terry Tester"; window.__MODULES = c.modules || {}; if (c.missing) window.__MISSING_TABLES = c.missing; }, Object.assign({ seed: JSON.parse(JSON.stringify(seed)) }, cfg));
   await p.route("**/assets/js/supabase.js*", (r) => r.fulfill({ status: 200, contentType: "text/javascript", body: stub }));
   await p.route(/jsdelivr|fonts\.googleapis|fonts\.gstatic/, (r) => r.fulfill({ status: 200, contentType: "text/plain", body: "" }));
   // The renderer names images by their pgc.capital address; serve them from the repo.
@@ -89,6 +89,20 @@ const waitEditor = (p) => p.waitForSelector("#nle", { timeout: 10000 }).then(() 
   check(r, "marketingHidden", !(await vis(p, "#pMarketing")));
   const direct = await p.evaluate(async () => { const m = await import("/assets/js/supabase.js"); const a = await m.supabase.from("pgc_campaigns").select("*"); const b = await m.supabase.from("pgc_campaigns").insert({ title: "x" }).select().single(); return { rows: (a.data || []).length, insert: b.error ? "refused" : "ok" }; });
   check(r, "directAccessRefused", direct.rows === 0 && direct.insert === "refused", direct);
+  await ctx.close();
+}
+
+// ---------------- 1b. Tables not created yet (20261024_pgc_newsletter.sql not applied) ----------------
+{
+  const r = {}; results.notSetUp = r;
+  const { ctx, p, calls } = await session("notSetUp", { role: "admin", missing: ["pgc_campaigns", "pgc_campaign_templates"], hash: "#/campaigns" });
+  await p.waitForSelector("#panel-campaigns .p-setup", { timeout: 10000 });
+  const t = await text(p, "#panel-campaigns");
+  check(r, "setupMessage", /haven’t been created yet/.test(t) && /20261024_pgc_newsletter\.sql/.test(t), t.replace(/\s+/g, " ").slice(0, 160));
+  check(r, "noSchemaCacheError", !/schema cache/i.test(t) && !/schema cache/i.test(await text(p, "#pNotice")));
+  check(r, "noMailchimpCalls", calls.length === 0, calls.map((c) => c.action));
+  await p.evaluate(() => { location.hash = "#/nllists"; }); await p.waitForTimeout(600);
+  check(r, "everyEmailPageExplains", /haven’t been created yet/.test(await text(p, "#panel-nllists")));
   await ctx.close();
 }
 

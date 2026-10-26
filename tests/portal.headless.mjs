@@ -224,7 +224,7 @@ const noticeText = (p) => text(p, "#pNotice");
   // Live page is locked for a contributor
   await openPage(p, "home");
   check(r, "livePageLockedNotice", /Contributors cannot change published content/.test(await noticeText(p)));
-  await expand(p, "Why PGC — Our edge is structural access —");
+  await expand(p, "Why PGC — Our edge is structural access");
   check(r, "livePageFieldsReadonly", !(await setField(p, "Headline — white part", "x")));
   b = await buttons(p);
   check(r, "livePageActions", b.length === 1 && b[0] === "Save draft", b);
