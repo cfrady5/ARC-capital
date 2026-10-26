@@ -320,7 +320,16 @@ body.nle-dragging .nle-frame { pointer-events: none; }
 .nle-dialog .nle-msg:empty { display: none; }
 .nle-schedule { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
 .nle-schedule .nle-field { flex: 1 1 220px; margin: 0; }
+/* Check sending setup: the dialog sits outside .nlp, so the list is styled here. */
+.nle-dialog .pform-help { margin: 12px 0 0; font-size: 0.85rem; line-height: 1.45; color: var(--pa-text-2); }
+.nle-dialog .nlp-diag { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.nle-dialog .nlp-diag li { display: grid; gap: 2px; padding: 8px 12px; border-left: 3px solid var(--pa-border-strong); background: var(--pa-surface-muted); border-radius: 0 10px 10px 0; font-size: 0.85rem; line-height: 1.45; }
+.nle-dialog .nlp-diag li b { font-weight: 700; color: var(--pa-text); }
 .nle-dialog .nlp-diag li span { color: var(--pa-text-2); }
+.nle-dialog .nlp-diag-ok { border-left-color: #279643; }
+.nle-dialog .nlp-diag-warn { border-left-color: #d69a00; }
+.nle-dialog .nlp-diag-error { border-left-color: #c8372d; }
+.nle-dialog .nlp-diag-info { border-left-color: #0b7a6a; }
 
 /* ---- Scrim + drawers on narrower screens ---- */
 .nle-scrim { position: fixed; inset: 0; z-index: 45; background: rgba(0, 0, 0, 0.45); }
