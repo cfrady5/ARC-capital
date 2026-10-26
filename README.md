@@ -143,7 +143,10 @@ only by the function (service role); sent campaigns are frozen.
    are shared with ARI's function and already exist.
 4. Deploy the function: `supabase functions deploy pgc-mailchimp --no-verify-jwt`
    (like ARI's `mailchimp`: `subscribe` is public, every other action checks the caller
-   through `my_access` with their own token).
+   through `my_access` with their own token). *Deployed 2026-10-26 (version 1).* Redeploy
+   after any change to `index.ts` or `render.ts`.
+   Until step 3 is done, Send test says which secret is missing, and **Check sending
+   setup** in the Send test dialog lists the account's audiences with their IDs.
 5. Grant `pgc_newsletter` in ARI's Users & Access (after the ARI-repo task adds the row).
    Administrators can use the Email section right away.
 
