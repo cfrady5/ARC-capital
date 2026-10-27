@@ -316,6 +316,42 @@ select public.t('campaigns: admin creates a draft', $$insert into public.pgc_cam
 select public.t_eq('campaigns: admin has no ARI newsletter access (that module stays explicit)', $$select public.can_edit('newsletter')::text$$, 'false');
 reset role;
 
+-- ================= SELF-REGISTRATION: @pgc.capital (20261027) =================
+select public.as_user(null);
+select public.t_count('signup: @pgc.capital listed with website + email contributor', $$select * from public.portal_registration_domains where domain = 'pgc.capital' and modules = '{"pgc":"contributor","pgc_newsletter":"contributor"}'::jsonb$$, 1);
+select public.t('signup: other domain rejected', $$insert into auth.users (email) values ('x@gmail.com')$$, false);
+select public.t('signup: lookalike domain rejected', $$insert into auth.users (email) values ('x@pgc.capital.evil.com')$$, false);
+select public.t('signup: subdomain rejected', $$insert into auth.users (email) values ('x@mail.pgc.capital')$$, false);
+select public.t('signup: similar domain rejected', $$insert into auth.users (email) values ('x@pgccapital.com')$$, false);
+insert into public.portal_blocklist (email, reason) values ('gone@pgc.capital', 'left');
+select public.t('signup: blocklisted @pgc.capital address rejected', $$insert into auth.users (email) values ('gone@pgc.capital')$$, false);
+select public.t('signup: @pgc.capital sign-up accepted (unconfirmed)', $$insert into auth.users (id, email, raw_user_meta_data) values ('a0000000-0000-0000-0000-000000000001', 'Ava.Hunt@PGC.capital', '{"full_name":"Ava Hunt","role":"admin"}')$$, true);
+select public.t_count('signup: no profile before the email is verified', $$select * from public.employees where email = 'ava.hunt@pgc.capital'$$, 0);
+select public.t('signup: verifying the email creates the profile', $$update auth.users set email_confirmed_at = now() where id = 'a0000000-0000-0000-0000-000000000001'$$, true);
+select public.t_count('signup: baseline employee, the requested admin role ignored', $$select * from public.employees where email = 'ava.hunt@pgc.capital' and role = 'employee' and status = 'active' and full_name = 'Ava Hunt'$$, 1);
+select public.t_count('signup: starts as contributor on website and email', $$select * from public.employee_access a join public.employees e on e.id = a.employee_id where e.email = 'ava.hunt@pgc.capital' and a.level = 'contributor' and a.module in ('pgc', 'pgc_newsletter')$$, 2);
+select public.t_count('signup: no other grants', $$select * from public.employee_access a join public.employees e on e.id = a.employee_id where e.email = 'ava.hunt@pgc.capital'$$, 2);
+select public.t_count('signup: logged as a self-registration with both grants', $$select * from public.admin_activity where action = 'account_registered' and target_email = 'ava.hunt@pgc.capital' and detail -> 'modules' = '{"pgc":"contributor","pgc_newsletter":"contributor"}'::jsonb and not detail ? 'skipped'$$, 1);
+-- as the new person, the way the portal sees them after verifying
+set role authenticated;
+select set_config('request.jwt.claims', '{"email":"ava.hunt@pgc.capital","role":"authenticated","sub":"a0000000-0000-0000-0000-000000000001"}', false);
+select public.t_eq('signup: portal access check reports both modules', $$select (public.ensure_my_profile() -> 'modules')::text$$, '{"pgc": "contributor", "pgc_newsletter": "contributor"}');
+select public.t_eq('signup: can edit, cannot publish the website', $$select public.can_edit('pgc')::text || '/' || public.can_publish('pgc')::text$$, 'true/false');
+select public.t_eq('signup: can draft, cannot send email campaigns', $$select public.can_edit('pgc_newsletter')::text || '/' || public.can_publish('pgc_newsletter')::text$$, 'true/false');
+select public.t('signup: creates a campaign draft', $$insert into public.pgc_campaigns (title) values ('Ava draft')$$, true);
+select public.t_eq('signup: …stamped as theirs', $$select created_by from public.pgc_campaigns where title = 'Ava draft'$$, 'ava.hunt@pgc.capital');
+select public.t('signup: cannot mark a campaign sent', $$insert into public.pgc_campaigns (title, status) values ('x', 'sent')$$, false);
+select public.t('signup: cannot raise their own access', $$insert into public.employee_access (employee_id, module, level) select id, 'pgc', 'publisher' from public.employees where email = 'ava.hunt@pgc.capital'$$, false);
+select public.t_count('signup: cannot read the domain list', 'select * from public.portal_registration_domains', 0);
+select public.t('signup: cannot call provision_employee directly', $$select public.provision_employee('someone@pgc.capital', 'x')$$, false);
+reset role;
+-- @theari.us sign-ups are unchanged: baseline employee, no PGC access
+select public.as_user(null);
+select public.t('signup: @theari.us sign-up still accepted', $$insert into auth.users (id, email) values ('a0000000-0000-0000-0000-000000000002', 'newbie@theari.us')$$, true);
+select public.t('signup: …and verified', $$update auth.users set email_confirmed_at = now() where id = 'a0000000-0000-0000-0000-000000000002'$$, true);
+select public.t_count('signup: @theari.us profile has no PGC grants', $$select * from public.employee_access a join public.employees e on e.id = a.employee_id where e.email = 'newbie@theari.us'$$, 0);
+select public.t_count('signup: provision_employee not executable by anon', $$select 1 where not has_function_privilege('anon', 'public.provision_employee(text,text)', 'execute')$$, 1);
+
 -- ================= REPORT =================
 select n, case when ok then 'PASS' else 'FAIL' end as result, label, note from public.t_results order by n;
 select count(*) filter (where not ok) as failures, count(*) as total from public.t_results;

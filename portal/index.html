@@ -34,7 +34,7 @@
   <div class="p-signin-card">
     <img class="p-signin-logo" src="/assets/img/pgc-logo-mint.svg" alt="Proving Ground Capital (PGC)" width="180" height="118">
     <h1>Website editor</h1>
-    <p class="p-signin-sub">Sign in with your Applied Research Institute account.</p>
+    <p class="p-signin-sub">Sign in with your Proving Ground Capital or Applied Research Institute account.</p>
 
     <form id="pSigninForm" novalidate>
       <div class="p-field">
@@ -49,6 +49,58 @@
       <button class="p-link-btn" type="button" id="pMagicBtn">Email me a sign-in link instead</button>
       <p class="p-msg" id="pSigninMsg" role="status" aria-live="polite"></p>
     </form>
+    <p class="p-signin-alt">New to PGC? <button class="p-link-btn" type="button" id="pShowRegister">Create an account</button> with your @pgc.capital email.</p>
+  </div>
+</main>
+
+<!-- Self-registration: @pgc.capital only. The database enforces the domain and
+     sets the starting access after the email is verified; nothing sent from
+     this form can change either. -->
+<main id="pRegister" class="p-signin" hidden>
+  <div class="p-signin-card">
+    <img class="p-signin-logo" src="/assets/img/pgc-logo-mint.svg" alt="Proving Ground Capital (PGC)" width="180" height="118">
+    <h1>Create your account</h1>
+    <p class="p-signin-sub">For Proving Ground Capital staff with a @pgc.capital email address. We’ll email you a code to confirm it’s yours.</p>
+    <form id="pRegisterForm" novalidate>
+      <div class="p-field">
+        <label for="pRegName">Full name</label>
+        <input id="pRegName" name="name" type="text" autocomplete="name" maxlength="160" required>
+      </div>
+      <div class="p-field">
+        <label for="pRegEmail">Work email</label>
+        <input id="pRegEmail" name="email" type="email" autocomplete="email" placeholder="name@pgc.capital" required>
+      </div>
+      <div class="p-field">
+        <label for="pRegPw1">Password</label>
+        <input id="pRegPw1" name="password" type="password" autocomplete="new-password" minlength="10" aria-describedby="pRegPwHint" required>
+        <p class="p-hint" id="pRegPwHint">At least 10 characters.</p>
+      </div>
+      <div class="p-field">
+        <label for="pRegPw2">Confirm password</label>
+        <input id="pRegPw2" name="password2" type="password" autocomplete="new-password" required>
+      </div>
+      <button class="btn btn-primary" type="submit" id="pRegSubmit">Create account</button>
+      <p class="p-msg" id="pRegMsg" role="status" aria-live="polite"></p>
+    </form>
+    <button class="p-link-btn p-signin-back" type="button" data-show-signin>Back to sign in</button>
+  </div>
+</main>
+
+<main id="pVerify" class="p-signin" hidden>
+  <div class="p-signin-card">
+    <img class="p-signin-logo" src="/assets/img/pgc-logo-mint.svg" alt="Proving Ground Capital (PGC)" width="180" height="118">
+    <h1>Check your email</h1>
+    <p class="p-signin-sub">We sent a 6-digit code to <b id="pVerifyEmail"></b>. Enter it here, or open the link in that email.</p>
+    <form id="pVerifyForm" novalidate>
+      <div class="p-field">
+        <label for="pVerifyCode">Confirmation code</label>
+        <input id="pVerifyCode" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="9" required>
+      </div>
+      <button class="btn btn-primary" type="submit" id="pVerifySubmit">Confirm email</button>
+      <button class="p-link-btn" type="button" id="pVerifyResend">Send a new code</button>
+      <p class="p-msg" id="pVerifyMsg" role="status" aria-live="polite"></p>
+    </form>
+    <button class="p-link-btn p-signin-back" type="button" data-show-signin>Back to sign in</button>
   </div>
 </main>
 

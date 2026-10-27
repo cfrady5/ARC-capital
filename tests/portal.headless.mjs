@@ -61,8 +61,8 @@ const visible = (p, sel) => p.evaluate((s) => { const e = document.querySelector
 const text = (p, sel) => p.evaluate((s) => (document.querySelector(s) || {}).textContent || "", sel);
 const buttons = (p) => p.evaluate(() => [...document.querySelectorAll(".p-actions .btn")].map((b) => b.textContent.trim()));
 const internalMarkup = (p) => p.evaluate(() => { const app = document.getElementById("pApp"); return { appHidden: app.hidden, appHeight: app.offsetHeight, navItems: document.querySelectorAll("#pPageNav li").length, viewText: document.getElementById("pView").textContent.trim() }; });
-/* Exactly one of the four screens occupies the page. */
-const screens = (p) => p.evaluate(() => Object.fromEntries(["pBoot", "pSignin", "pDenied", "pApp"].map((id) => { const e = document.getElementById(id); return [id, e.offsetHeight > 0 ? Math.round(e.getBoundingClientRect().top) : null]; })));
+/* Exactly one of the screens occupies the page. */
+const screens = (p) => p.evaluate(() => Object.fromEntries(["pBoot", "pSignin", "pRegister", "pVerify", "pDenied", "pApp"].map((id) => { const e = document.getElementById(id); return [id, e.offsetHeight > 0 ? Math.round(e.getBoundingClientRect().top) : null]; })));
 const onlyScreen = (s, id) => Object.entries(s).every(([k, top]) => (k === id ? top !== null && top <= 1 : top === null));
 async function openPage(p, slug) { await p.evaluate((s) => { location.hash = "#/page/" + s; }, slug); await p.waitForSelector(".p-actions", { timeout: 8000 }); await p.waitForTimeout(300); }
 async function expand(p, title) {
@@ -115,6 +115,58 @@ const noticeText = (p) => text(p, "#pNotice");
   await p.focus("#pEmail");
   check(r, "focusRing", await p.evaluate(() => getComputedStyle(document.activeElement).outlineStyle !== "none"));
   await p.screenshot({ path: path.join(OUT, "portal-signin.png") });
+  await ctx.close();
+}
+
+// ---------------- 1b. Create an account with a @pgc.capital email ----------------
+{
+  const r = {}; results.register = r;
+  const { ctx, p } = await session("register", { anon: true, notEmployee: true });
+  check(r, "linkOnSignin", /Create an account/.test(await text(p, "#pSignin .p-signin-alt")));
+  await p.fill("#pEmail", "ava.hunt@pgc.capital");
+  await p.click("#pShowRegister");
+  check(r, "registerIsTheOnlyScreen", onlyScreen(await screens(p), "pRegister"), await screens(p));
+  check(r, "emailCarriedOver", (await p.inputValue("#pRegEmail")) === "ava.hunt@pgc.capital");
+  const submit = async () => { await p.click("#pRegSubmit"); await p.waitForTimeout(250); return text(p, "#pRegMsg"); };
+  check(r, "nameRequired", /full name/i.test(await submit()));
+  await p.fill("#pRegName", "Ava Hunt");
+  await p.fill("#pRegEmail", "ava@gmail.com");
+  check(r, "otherDomainRefused", /@pgc\.capital/.test(await submit()));
+  await p.fill("#pRegEmail", "ava@theari.us");
+  check(r, "ariDomainPointsToAriPortal", /ARI portal/.test(await submit()));
+  await p.fill("#pRegEmail", "Ava.Hunt@PGC.capital");
+  await p.fill("#pRegPw1", "short");
+  check(r, "passwordLength", /10 characters/.test(await submit()));
+  await p.fill("#pRegPw1", "correct horse battery"); await p.fill("#pRegPw2", "something else");
+  check(r, "passwordsMatch", /match/i.test(await submit()));
+  check(r, "nothingSentWhileInvalid", (await p.evaluate(() => window.__LOG.filter((l) => l[0] === "signUp").length)) === 0);
+  // Already registered: Supabase answers with an empty identities list.
+  await p.evaluate(() => { window.__SIGNUP_EXISTS = "ava.hunt@pgc.capital"; });
+  await p.fill("#pRegPw2", "correct horse battery");
+  check(r, "existingAccountMessage", /already has an account/i.test(await submit()));
+  await p.evaluate(() => { window.__SIGNUP_EXISTS = null; });
+  await submit(); await p.waitForSelector("#pVerify:not([hidden])", { timeout: 5000 });
+  const su = await p.evaluate(() => window.__LOG.filter((l) => l[0] === "signUp").pop());
+  check(r, "signUpCalled", su && su[1] === "ava.hunt@pgc.capital" && su[2].full_name === "Ava Hunt" && su[2].site === "pgc" && !("role" in su[2]) && /\/portal\/$/.test(su[3]), su);
+  check(r, "verifyIsTheOnlyScreen", onlyScreen(await screens(p), "pVerify"), await screens(p));
+  check(r, "verifyNamesTheAddress", (await text(p, "#pVerifyEmail")) === "ava.hunt@pgc.capital");
+  await p.click("#pVerifyResend"); await p.waitForTimeout(200);
+  check(r, "resendThrottled", /seconds/.test(await text(p, "#pVerifyMsg")) && (await p.evaluate(() => window.__LOG.filter((l) => l[0] === "resend").length)) === 0);
+  await p.fill("#pVerifyCode", "000000"); await p.click("#pVerifySubmit"); await p.waitForTimeout(250);
+  check(r, "wrongCodeMessage", /isn’t right or has expired/.test(await text(p, "#pVerifyMsg")));
+  await p.fill("#pVerifyCode", "123 456"); await p.click("#pVerifySubmit");
+  await p.waitForSelector("#pApp:not([hidden])", { timeout: 8000 }); await p.waitForTimeout(600);
+  check(r, "signedInAfterCode", onlyScreen(await screens(p), "pApp"), await screens(p));
+  check(r, "contributorBadge", (await text(p, "#pLevel")) === "Contributor" && (await text(p, "#pWho")) === "Ava Hunt");
+  check(r, "websiteAndEmailSections", (await visible(p, "#pPageNav")) && (await visible(p, "#pEmailNav")));
+  await openPage(p, "home");
+  const b = await buttons(p);
+  check(r, "cannotPublish", !b.includes("Publish") && !b.includes("Unpublish"), b);
+  // Back to sign in from the register screen, keyboard-reachable controls
+  await p.click("#pApp [data-signout]"); await p.waitForSelector("#pSignin:not([hidden])", { timeout: 5000 });
+  await p.click("#pShowRegister"); await p.click("#pRegister [data-show-signin]");
+  check(r, "backToSignin", onlyScreen(await screens(p), "pSignin"));
+  await p.screenshot({ path: path.join(OUT, "portal-register.png") });
   await ctx.close();
 }
 

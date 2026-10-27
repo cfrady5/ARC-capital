@@ -77,6 +77,13 @@ dropped — so deploy before telling people the row exists.
 1. `20261023_pgc_site_content.sql`, `20261023_pgc_media_bucket.sql` and
    `20261023_pgc_seed_content.sql` are applied (2026-10-23).
 2. Apply `20261024_pgc_newsletter.sql` (adds `'pgc_newsletter'` to the constraint;
-   `grant_access(email, 'pgc_newsletter', level)` works from that moment).
+   `grant_access(email, 'pgc_newsletter', level)` works from that moment). *Applied 2026-10-26.*
 3. Deploy this ARI change (UI + `portal-invite`).
 4. Grant people the permissions in Administration → Users & Access.
+
+Separate from this task and already written in the ARI repo (branch
+`claude/pgc-self-registration`, HANDOFF §99): `20261027_registration_domains.sql`
+lets @pgc.capital people create their own account. They start as contributor on
+`pgc` and `pgc_newsletter` (via ARC-capital `20261027_pgc_self_registration.sql`).
+Until this task is done those grants don't show in Users & Access, but saving a
+person there leaves them intact (`set_access` only touches its own module list).

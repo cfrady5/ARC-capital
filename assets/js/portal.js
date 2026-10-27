@@ -101,13 +101,19 @@ async function boot() {
 }
 async function bootInner() {
   const boot = $("#pBoot"), signin = $("#pSignin"), denied = $("#pDenied"), app = $("#pApp");
-  [signin, denied, app].forEach((x) => (x.hidden = true));
+  [signin, $("#pRegister"), $("#pVerify"), denied, app].forEach((x) => (x.hidden = true));
   boot.hidden = false;
   const { data } = await supabase.auth.getSession();
   const session = data && data.session;
   if (!session) { boot.hidden = true; signin.hidden = false; $("#pEmail").focus(); return; }
 
-  const res = await supabase.rpc("my_access");
+  let res = await supabase.rpc("my_access");
+  // Just verified a new account: the database normally creates the profile at
+  // that moment; if it hasn't yet, ask it to (same rules, read from the login itself).
+  if (!res.error && !res.data) {
+    const made = await supabase.rpc("ensure_my_profile");
+    if (!made.error && made.data) res = made;
+  }
   if (res.error) {
     boot.hidden = true; denied.hidden = false;
     $("#pDeniedMsg").textContent = "The access check failed (" + errText(res.error) + "). Try again in a moment.";
@@ -162,7 +168,7 @@ function wireSignin() {
     // shouldCreateUser: false — accounts are created in ARI's portal, never here.
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + "/portal/", shouldCreateUser: false } });
     $("#pMagicBtn").disabled = false;
-    if (error) { say(/signups not allowed|not found|user/i.test(error.message) ? "No account with that address. An ARI administrator can add you." : errText(error), "is-error"); return; }
+    if (error) { say(/signups not allowed|not found|user/i.test(error.message) ? "No account with that address. With a @pgc.capital email you can create one below; otherwise an ARI administrator can add you." : errText(error), "is-error"); return; }
     say("Check your inbox — the sign-in link is on its way to " + email + ".", "is-ok");
   });
   document.querySelectorAll("[data-signout]").forEach((b) => b.addEventListener("click", async () => {
@@ -176,6 +182,90 @@ function wireSignin() {
   supabase.auth.onAuthStateChange((event) => {
     if (event === "SIGNED_IN" && !state.access) boot();
     if (event === "SIGNED_OUT" && state.access) { state.access = null; boot(); }
+  });
+}
+
+/* ----------------------------------------------------------- create account */
+// Only @pgc.capital here (ARI staff register in the ARI portal). The database
+// enforces the domain and grants the starting access (website + email campaigns
+// contributor) once the email is verified; the browser's data can't change it.
+const REG_DOMAIN = "pgc.capital";
+function wireRegister() {
+  const reg = $("#pRegister"), ver = $("#pVerify"), signin = $("#pSignin");
+  const say = (node, t, cls) => { node.textContent = t; node.className = "p-msg" + (cls ? " " + cls : ""); };
+  const regMsg = $("#pRegMsg"), verMsg = $("#pVerifyMsg");
+  let pending = "", lastSent = 0;
+  const show = (v) => { [signin, reg, ver].forEach((x) => (x.hidden = x !== v)); };
+  $("#pShowRegister").addEventListener("click", () => {
+    say(regMsg, "");
+    const typed = $("#pEmail").value.trim().toLowerCase();
+    if (typed.endsWith("@" + REG_DOMAIN)) $("#pRegEmail").value = typed;
+    show(reg); $("#pRegName").focus();
+  });
+  document.querySelectorAll("[data-show-signin]").forEach((b) => b.addEventListener("click", () => { show(signin); $("#pEmail").focus(); }));
+
+  $("#pRegisterForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("#pRegName").value.trim(), email = $("#pRegEmail").value.trim().toLowerCase();
+    const p1 = $("#pRegPw1").value, p2 = $("#pRegPw2").value;
+    const fail = (t, field) => { say(regMsg, t, "is-error"); field.focus(); };
+    if (!name) return fail("Enter your full name.", $("#pRegName"));
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Enter your work email address.", $("#pRegEmail"));
+    const dom = email.split("@")[1];
+    if (dom === "theari.us") return fail("@theari.us accounts are created in the ARI portal. If you already have one, go back and sign in with it.", $("#pRegEmail"));
+    if (dom !== REG_DOMAIN) return fail("Accounts can only be created with a @pgc.capital email address. If you don’t have one, ask an administrator to add you.", $("#pRegEmail"));
+    if (p1.length < 10) return fail("Use at least 10 characters for your password.", $("#pRegPw1"));
+    if (p1 !== p2) return fail("Those passwords don’t match.", $("#pRegPw2"));
+    $("#pRegSubmit").disabled = true; say(regMsg, "Creating your account…");
+    try {
+      // site: "pgc" lets the confirmation email template show PGC wording.
+      const { data, error } = await supabase.auth.signUp({ email, password: p1, options: { data: { full_name: name, site: "pgc" }, emailRedirectTo: location.origin + "/portal/" } });
+      if (error) throw error;
+      // Supabase doesn't say whether an address exists; an empty identities list is its signal.
+      if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        say(regMsg, "This email already has an account. Go back and sign in, or use “Email me a sign-in link” if you’ve forgotten the password.", "is-error");
+        return;
+      }
+      if (data && data.session) { say(regMsg, ""); await boot(); return; }
+      pending = email; lastSent = Date.now();
+      $("#pVerifyEmail").textContent = email; $("#pVerifyCode").value = ""; say(verMsg, "");
+      show(ver); $("#pVerifyCode").focus();
+    } catch (err) {
+      const m = (err && err.message) || "";
+      say(regMsg, /already (registered|exists)/i.test(m) ? "This email already has an account. Go back and sign in."
+        : /database error|register/i.test(m) ? "That address can’t create an account. Use your @pgc.capital email, or ask an administrator."
+        : /rate limit|security purposes|too many/i.test(m) ? "Too many attempts. Wait a minute and try again."
+        : /password/i.test(m) ? m
+        : "Couldn’t create the account right now (" + (m || "unknown error") + ").", "is-error");
+    } finally { $("#pRegSubmit").disabled = false; }
+  });
+
+  // The code works even when a mail filter (e.g. Microsoft Safe Links) opens or rewrites the link.
+  $("#pVerifyForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const code = $("#pVerifyCode").value.replace(/\D/g, "");
+    if (code.length !== 6) { say(verMsg, "Enter the 6-digit code from the email.", "is-error"); $("#pVerifyCode").focus(); return; }
+    $("#pVerifySubmit").disabled = true; say(verMsg, "Checking…");
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({ email: pending, token: code, type: "signup" });
+      if (error) throw error;
+      say(verMsg, "");
+      if (data && data.session) { await boot(); return; }
+      show(signin); say($("#pSigninMsg"), "Your email is confirmed. Sign in with your password.", "is-ok");
+      $("#pEmail").value = pending; $("#pPassword").focus();
+    } catch (err) {
+      say(verMsg, /expired|invalid|not found|otp|token/i.test((err && err.message) || "") ? "That code isn’t right or has expired. Use the code from the newest email, or send a new one." : ((err && err.message) || "Couldn’t check the code right now."), "is-error");
+    } finally { $("#pVerifySubmit").disabled = false; }
+  });
+  $("#pVerifyResend").addEventListener("click", async () => {
+    const wait = 60000 - (Date.now() - lastSent);
+    if (wait > 0) { say(verMsg, "You can ask for a new code in " + Math.ceil(wait / 1000) + " seconds."); return; }
+    $("#pVerifyResend").disabled = true;
+    const { error } = await supabase.auth.resend({ type: "signup", email: pending, options: { emailRedirectTo: location.origin + "/portal/" } });
+    $("#pVerifyResend").disabled = false;
+    if (error) { say(verMsg, /rate limit|security purposes|too many/i.test(error.message) ? "Too many attempts. Wait a minute and try again." : errText(error), "is-error"); return; }
+    lastSent = Date.now();
+    say(verMsg, "A new code is on its way to " + pending + ". Use the newest email.", "is-ok");
   });
 }
 
@@ -234,6 +324,8 @@ async function ensureClean() {
   return true;
 }
 async function onRoute() {
+  // Signed out (e.g. the hash reset during sign-out): boot() shows the sign-in screen.
+  if (!state.access) return;
   if (!(await ensureClean())) {
     history.replaceState(null, "", state.route && state.route.hash || "#/");
     return;
@@ -954,5 +1046,6 @@ function imageField(label, url, alt, onChange, locked) {
 /* ------------------------------------------------------------------ go */
 clearTimeout(window.__pgcBootTimer);
 wireSignin();
+wireRegister();
 boot();
 window.addEventListener("beforeunload", (e) => { if (state.dirty || (NL.page && NL.page.isDirty())) { e.preventDefault(); e.returnValue = ""; } });

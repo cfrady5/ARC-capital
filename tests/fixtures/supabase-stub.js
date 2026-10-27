@@ -20,6 +20,8 @@ const nlEdit = () => isAdmin() || (isActive() && ["contributor", "publisher"].in
 const nlPublish = () => isAdmin() || (isActive() && MODS.pgc_newsletter === "publisher");
 const NL = ["pgc_campaigns", "pgc_campaign_templates"];
 const isComms = () => isAdmin() || (isActive() && Object.keys(MODS).some((m) => m !== "messages"));
+// public.portal_registration_domains as the two migrations seed it.
+const REG_DOMAINS = { "theari.us": {}, "pgc.capital": { pgc: "contributor", pgc_newsletter: "contributor" } };
 const rls = (msg) => { throw new Error(msg || "new row violates row-level security policy"); };
 let idc = 1;
 const uuid = () => "t-" + (idc++).toString(36).padStart(5, "0");
@@ -149,11 +151,33 @@ export const supabase = {
     onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; },
     signInWithPassword: async (args) => { window.__LOG.push(["signInWithPassword", args.email]); if (window.__PW_OK && args.password === window.__PW_OK) { window.__ANON = false; return { data: { session: {} }, error: null }; } return { data: null, error: { message: "Invalid login credentials" } }; },
     signInWithOtp: async (args) => { window.__OTP = (window.__OTP || []).concat([args]); return window.__OTP_ERROR ? { data: null, error: { message: window.__OTP_ERROR } } : { data: {}, error: null }; },
+    // Self-registration, as the auth.users guard and provision_employee() behave:
+    // listed domains only; after the code is verified the person is a baseline
+    // employee with the domain's starting access. The code is always 123456.
+    signUp: async (args) => {
+      const email = String(args.email || "").toLowerCase();
+      window.__LOG.push(["signUp", email, args.options && args.options.data, args.options && args.options.emailRedirectTo]);
+      if (window.__SIGNUP_EXISTS === email) return { data: { user: { email, identities: [] }, session: null }, error: null };
+      if (!(email.split("@")[1] in REG_DOMAINS)) return { data: null, error: { message: "Database error saving new user" } };
+      window.__PENDING = { email, name: (args.options && args.options.data && args.options.data.full_name) || "" };
+      return { data: { user: { email, identities: [{ provider: "email" }] }, session: null }, error: null };
+    },
+    verifyOtp: async (args) => {
+      window.__LOG.push(["verifyOtp", args.email, args.type]);
+      const p = window.__PENDING;
+      if (!p || p.email !== String(args.email || "").toLowerCase() || args.token !== "123456") return { data: null, error: { message: "Token has expired or is invalid" } };
+      Object.assign(ME, { email: p.email, full_name: p.name, role: "employee", status: "active" });
+      Object.keys(MODS).forEach((k) => delete MODS[k]);
+      Object.assign(MODS, REG_DOMAINS[p.email.split("@")[1]]);
+      window.__ANON = false; window.__NOT_EMPLOYEE = false; window.__PENDING = null;
+      return { data: { session: { user: { email: p.email }, access_token: "tok" } }, error: null };
+    },
+    resend: async (args) => { window.__LOG.push(["resend", args.type, args.email]); return { data: {}, error: null }; },
   },
   rpc: async (name, args) => {
     window.__LOG.push(["rpc", name, args]);
     if (window.__RPC_FAIL === name) return { data: null, error: { message: "function public." + name + " failed" } };
-    if (name === "my_access") {
+    if (name === "my_access" || name === "ensure_my_profile") {
       if (window.__ANON || window.__NOT_EMPLOYEE) return { data: null, error: null };
       return { data: { email: ME.email, full_name: ME.full_name, avatar_url: null, role: ME.role, status: ME.status, modules: Object.assign({}, MODS) }, error: null };
     }

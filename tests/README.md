@@ -47,6 +47,14 @@ node tests/public-content.headless.mjs
 - **Signed out:** sign-in form only, no internal markup in the DOM, `noindex`,
   validation messages, wrong password, magic link sent with
   `shouldCreateUser: false` and the `/portal/` redirect, visible focus ring.
+- **Create an account:** link on the sign-in card carries a typed @pgc.capital
+  address over; name, domain (other domains refused, @theari.us pointed to the
+  ARI portal), password length and match checked before anything is sent; an
+  existing address gets "already has an account"; `signUp` carries the name and
+  `site: "pgc"` (never a role) with the `/portal/` redirect; the code screen
+  names the address, throttles resend, rejects a wrong code, and the right code
+  (spaces allowed) signs the person straight in as Contributor with the website
+  and email sections, without Publish; back-to-sign-in works.
 - **Employee without the module** (after a successful password sign-in),
   **suspended** publisher and a **sign-in not linked to an employee**: the
   "no access" card, nothing internal rendered, sign out returns to sign-in.
@@ -122,7 +130,9 @@ node tools/build-newsletter-render.mjs   # regenerate after editing render.ts
 `local_schema.sql` recreates the parts of ARI's production schema the PGC
 migrations depend on (auth stubs, `employees`, `employee_access` with the
 pre-PGC module check, the helpers, `content_revisions`, a plain `storage`
-schema). Then the PGC migrations and `rls_tests.sql` (127 checks) run:
+schema, and ARI's @theari.us-only sign-up guard and provisioning as production had them
+before 2026-10-27). Then the PGC migrations, the ARI registration-domains migration
+(`tests/db/ari/`, a verbatim copy of cfrady5/ARI's) and `rls_tests.sql` (153 checks) run:
 
 ```sh
 createdb pgc_test
@@ -131,6 +141,8 @@ psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_site_con
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_media_bucket.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261024_pgc_newsletter.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261024_pgc_sections_extra.sql
+psql -v ON_ERROR_STOP=1 -d pgc_test -f tests/db/ari/20261027_registration_domains.sql
+psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261027_pgc_self_registration.sql
 psql -v ON_ERROR_STOP=1 -d pgc_test -f tests/db/rls_tests.sql    # last line: failures | total
 # optional: the seed applies cleanly and is idempotent
 psql -v ON_ERROR_STOP=1 -d pgc_test -f supabase/migrations/20261023_pgc_seed_content.sql
@@ -151,6 +163,13 @@ delete others' drafts; publishers request changes and delete drafts but cannot
 bypass the sending service or edit sent rows; the service role sets
 `scheduled`, after which the row is frozen; administrators have the module
 implicitly while ARI's explicit `newsletter` stays out of their reach.
+Self-registration (@pgc.capital): the domain row and its grants; other,
+lookalike, subdomain, similar and blocklisted addresses refused; no profile
+until the email is verified; then a baseline employee (a requested admin role
+ignored) with exactly `pgc` + `pgc_newsletter` contributor, logged; the new
+person can edit but not publish, draft but not send, cannot raise their own
+access, read the domain list or call `provision_employee`; @theari.us sign-ups
+still work and get no PGC access.
 
 ## Regenerating the seed
 

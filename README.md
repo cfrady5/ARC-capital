@@ -103,12 +103,41 @@ rows directly (the history keeps every version) or unpublishes first.
    pieces such as the Thesis lens banner) plus the current values of the newly editable
    bits and the `hq_location` setting. Safe to re-run. *Applied 2026-10-26* (see
    `EDITOR-UPDATE.md`).
+6. cfrady5/ARI `supabase/migrations/20261027_registration_domains.sql` (owned by the ARI
+   repo; a copy for the local tests is in `tests/db/ari/`) — ARI's sign-up guard reads a
+   list of allowed domains instead of hardcoding @theari.us. ARI sign-ups are unchanged.
+   **Not applied yet.**
+7. `supabase/migrations/20261027_pgc_self_registration.sql` — adds @pgc.capital to that
+   list, starting as contributor on `pgc` and `pgc_newsletter`. **Not applied yet.**
 
 Then: Supabase → Authentication → URL configuration: add `https://pgc.capital`
-and `https://pgc.capital/portal/**` as redirect URLs (magic links land
-on `/portal/`). Email confirmation stays on; the portal never creates accounts
-(`shouldCreateUser: false`). Grant people the permission in ARI's Users & Access once
+and `https://pgc.capital/portal/**` as redirect URLs (sign-in and confirmation links
+land on `/portal/`). Email confirmation stays on. Magic links never create accounts
+(`shouldCreateUser: false`); new accounts come from **Create an account** (below) or an
+administrator. Change people's access in ARI's Users & Access once
 `docs/ARI-REPO-TASK.md` is done.
+
+### Creating an account (@pgc.capital)
+
+Anyone with a **@pgc.capital** address can use **Create an account** on the
+`/portal/` sign-in screen: name, email, password (10+ characters). Supabase emails a
+6-digit code (and a link). Once the email is confirmed, the database creates a baseline
+Employee profile and grants **contributor** on the website (`pgc`) and email campaigns
+(`pgc_newsletter`). They can edit pages, save drafts, draft and test campaigns, and
+submit either for review. Publishing and sending stay with publishers and
+administrators. Only the exact domain counts: subdomains, lookalikes and blocklisted
+addresses are refused by the database, whatever the browser sends. @theari.us people
+register in the ARI portal and get no PGC access by default.
+
+- To raise someone (e.g. to publisher), use ARI's Users & Access once the ARI-repo task
+  adds the PGC rows, or SQL until then:
+  `select public.grant_access('name@pgc.capital', 'pgc', 'publisher');`
+- The confirmation email uses the project's shared **Confirm signup** template (ARI
+  wording). The portal sends `site: "pgc"` in the sign-up metadata, so the template can
+  show PGC wording to PGC people: in Supabase → Authentication → Email Templates →
+  Confirm signup, wrap the existing text as
+  `{{ if eq .Data.site "pgc" }}…PGC version…{{ else }}…current ARI text…{{ end }}`
+  and keep `{{ .Token }}` (the 6-digit code) in both versions.
 
 ### Email campaigns (Mailchimp) in the portal
 
@@ -152,8 +181,9 @@ only by the function (service role); sent campaigns are frozen.
 
 ### Portal (`/portal/`)
 
-Sign in with email + password or a magic link → `rpc("my_access")` → only the people
-with `pgc` (or administrators) see anything; signed-out, suspended and unknown accounts
+Sign in with email + password or a magic link, or create an account with a @pgc.capital
+email → `rpc("my_access")` → only the people with `pgc` or `pgc_newsletter` (or
+administrators) see anything; signed-out, suspended and unknown accounts
 get a sign-in or "no access" card and no internal markup. Page list with state pills,
 an editor per page (page title/description, sections with text, items, images, up/down
 ordering, add/remove), Team and Site settings editors, **Save draft / Submit for review /
