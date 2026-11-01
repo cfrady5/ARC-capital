@@ -106,9 +106,10 @@ rows directly (the history keeps every version) or unpublishes first.
 6. cfrady5/ARI `supabase/migrations/20261027_registration_domains.sql` (owned by the ARI
    repo; a copy for the local tests is in `tests/db/ari/`) — ARI's sign-up guard reads a
    list of allowed domains instead of hardcoding @theari.us. ARI sign-ups are unchanged.
-   **Not applied yet.**
+   *Applied 2026-11-01.*
 7. `supabase/migrations/20261027_pgc_self_registration.sql` — adds @pgc.capital to that
-   list, starting as contributor on `pgc` and `pgc_newsletter`. **Not applied yet.**
+   list, starting as contributor on `pgc` and `pgc_newsletter`. *Applied 2026-11-01*
+   (checked with a rolled-back test sign-up through the production triggers).
 
 Then: Supabase → Authentication → URL configuration: add `https://pgc.capital`
 and `https://pgc.capital/portal/**` as redirect URLs (sign-in and confirmation links

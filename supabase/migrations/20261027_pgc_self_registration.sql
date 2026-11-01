@@ -2,7 +2,8 @@
 -- Proving Ground Capital (PGC) — @pgc.capital people create their own account.
 -- 2026-10-27
 --
--- NOT APPLIED. Apply after cfrady5/ARI supabase/migrations/20261027_registration_domains.sql,
+-- APPLIED to production 2026-11-01 (verified: domain row, grants on a rolled-back
+-- test sign-up). Apply after cfrady5/ARI supabase/migrations/20261027_registration_domains.sql,
 -- which replaces ARI's @theari.us-only sign-up guard with the
 -- public.portal_registration_domains list (ARI's own sign-ups are unchanged).
 --
